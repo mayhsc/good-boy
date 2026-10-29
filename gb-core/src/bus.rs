@@ -1,5 +1,6 @@
 use crate::{
     IF_ADDR,
+    apu::Apu,
     joypad::{Button, Joypad},
     ppu::Ppu,
     timer::Timer,
@@ -33,6 +34,7 @@ pub struct MemoryMap {
 
     timer: Timer,
     ppu: Ppu,
+    apu: Apu,
 
     joypad: Joypad,
 }
@@ -54,6 +56,7 @@ impl Default for MemoryMap {
 
             timer: Timer::new(),
             ppu: Ppu::new(),
+            apu: Apu::new(),
 
             joypad: Joypad::new(),
         }
@@ -76,6 +79,11 @@ impl Bus for MemoryMap {
             0xFF04..=0xFF07 => self.timer.get_timer(addr),
             0x8000..=0x9FFF | 0xFE00..=0xFE9F | 0xFF40..=0xFF4B => self.ppu.read(addr),
             0xFF00 => self.joypad.read(),
+            0xFF24..=0xFF26
+            | 0xFF10..=0xFF15
+            | 0xFF1A..=0xFF1E
+            | 0xFF30..=0xFF3F
+            | 0xFF20..=0xFF23 => self.apu.read(addr),
             0xFF00..=0xFF7F => self.io_regs[(addr - 0xFF00) as usize],
             0xFF80..=0xFFFE => self.hram[(addr - 0xFF80) as usize],
             0xFFFF => self.ie,
@@ -103,19 +111,13 @@ impl Bus for MemoryMap {
                 }
             }
             0x8000..=0x9FFF | 0xFE00..=0xFE9F | 0xFF40..=0xFF4B => self.ppu.write(addr, value),
-            // 0xFF02 => {
-            //     if (value & 0x80) != 0 {
-            //         self.io_regs[0x02] = value & !0x80;
-
-            //         self.io_regs[0x01] = 0xFF;
-
-            //         let current_if = self.read(IF_ADDR);
-            //         self.write(IF_ADDR, current_if | (1 << 3));
-            //     } else {
-            //         self.io_regs[0x02] = value;
-            //     }
-            // }
             0xFF00 => self.joypad.write(value),
+            0xFF24..=0xFF26
+            | 0xFF10..=0xFF15
+            | 0xFF1A..=0xFF1E
+            | 0xFF30..=0xFF3F
+            | 0xFF20..=0xFF23 => self.apu.write(addr, value),
+
             0xFF00..=0xFF7F => self.io_regs[(addr - 0xFF00) as usize] = value,
             0xFF80..=0xFFFE => self.hram[(addr - 0xFF80) as usize] = value,
             0xFFFF => self.ie = value,
