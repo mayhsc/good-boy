@@ -79,11 +79,7 @@ impl Bus for MemoryMap {
             0xFF04..=0xFF07 => self.timer.get_timer(addr),
             0x8000..=0x9FFF | 0xFE00..=0xFE9F | 0xFF40..=0xFF4B => self.ppu.read(addr),
             0xFF00 => self.joypad.read(),
-            0xFF24..=0xFF26
-            | 0xFF10..=0xFF15
-            | 0xFF1A..=0xFF1E
-            | 0xFF30..=0xFF3F
-            | 0xFF20..=0xFF23 => self.apu.read(addr),
+            0xFF10..=0xFF3F => self.apu.read(addr),
             0xFF00..=0xFF7F => self.io_regs[(addr - 0xFF00) as usize],
             0xFF80..=0xFFFE => self.hram[(addr - 0xFF80) as usize],
             0xFFFF => self.ie,
@@ -112,12 +108,7 @@ impl Bus for MemoryMap {
             }
             0x8000..=0x9FFF | 0xFE00..=0xFE9F | 0xFF40..=0xFF4B => self.ppu.write(addr, value),
             0xFF00 => self.joypad.write(value),
-            0xFF24..=0xFF26
-            | 0xFF10..=0xFF15
-            | 0xFF1A..=0xFF1E
-            | 0xFF30..=0xFF3F
-            | 0xFF20..=0xFF23 => self.apu.write(addr, value),
-
+            0xFF10..=0xFF3F => self.apu.write(addr, value),
             0xFF00..=0xFF7F => self.io_regs[(addr - 0xFF00) as usize] = value,
             0xFF80..=0xFFFE => self.hram[(addr - 0xFF80) as usize] = value,
             0xFFFF => self.ie = value,
