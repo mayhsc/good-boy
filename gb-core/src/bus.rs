@@ -98,7 +98,11 @@ impl Bus for MemoryMap {
             }
             0xE000..=0xFDFF => self.write(addr - 0x2000, value),
             0xFEA0..=0xFEFF => {}
-            0xFF04..=0xFF07 => self.timer.set_timer(addr, value),
+            0xFF04..=0xFF07 => {
+                if self.timer.set_timer(addr, value).apu_tick {
+                    self.apu.tick_frame_sequencer();
+                }
+            }
             0xFF46 => {
                 let base = (value as u16) << 8;
                 for i in 0..0xA0u16 {
@@ -117,9 +121,13 @@ impl Bus for MemoryMap {
 
     fn tick_timers(&mut self, t_cycles: u32) {
         for _ in 0..t_cycles {
-            if self.timer.tick() {
-                let _if = self.read(IF_ADDR) | 1 << 2;
-                self.write(IF_ADDR, _if);
+            let ev = self.timer.tick();
+            if ev.interrupt {
+                let f = self.read(IF_ADDR) | (1 << 2);
+                self.write(IF_ADDR, f);
+            }
+            if ev.apu_tick {
+                self.apu.tick_frame_sequencer();
             }
             let interrupts = self.ppu.tick();
             if interrupts != 0 {

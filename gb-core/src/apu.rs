@@ -3,6 +3,7 @@ pub(crate) struct Apu {
     wave_ram: [u8; 16],    // 0xFF30..=0xFF3F
     power: bool,           // NR52 bit 7
     channel_on: [bool; 4], // NR52 bits 0-3 (read-only status)
+    counter: u8,
 }
 
 // Bits that always read back as 1
@@ -35,13 +36,14 @@ impl Apu {
         regs[0x11] = 0x00;
         regs[0x12] = 0x00;
         regs[0x13] = 0xBF;
-        regs[0x14] = 0x77; 
-        regs[0x15] = 0xF3; 
+        regs[0x14] = 0x77;
+        regs[0x15] = 0xF3;
         Self {
             regs,
             wave_ram: [0; 16],
             power: true,
-            channel_on: [true, false, false, false], 
+            channel_on: [true, false, false, false],
+            counter: 0,
         }
     }
 
@@ -99,6 +101,24 @@ impl Apu {
             0xFF1A if value & 0x80 == 0 => self.channel_on[2] = false,
             0xFF21 if value & 0xF8 == 0 => self.channel_on[3] = false,
             _ => {}
+        }
+    }
+
+    pub fn tick_frame_sequencer(&mut self) {
+        self.counter += 1;
+        let counter = self.counter;
+
+        if counter % 2 == 0 {
+            // Sound length
+        }
+
+        if counter % 4 == 0 {
+            // CH1 freq sweep
+        }
+
+        if counter == 8  {
+            self.counter = 0;
+            // Envelope sweep
         }
     }
 }
