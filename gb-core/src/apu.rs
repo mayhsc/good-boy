@@ -2,6 +2,9 @@ use crate::apu::pulse_channel::PulseChannel;
 
 mod pulse_channel;
 
+const CPU_FREQUENCY: f64 = 4_194_304.0;
+const SAMPLE_RATE: f64 = 44_100.0;
+
 #[derive(Default)]
 #[rustfmt::skip]
 pub(crate) struct Apu {
@@ -14,6 +17,8 @@ pub(crate) struct Apu {
     power: bool,
     channel_on: [bool; 2],
     counter: u8,
+    sample_counter: f64,
+    audio_buffer: Vec<f32>
 }
 
 impl Apu {
@@ -123,13 +128,31 @@ impl Apu {
         self.counter = (self.counter + 1) % 8;
         if step % 2 == 0 { /* length */ }
         if step == 2 || step == 6 { /* sweep */ }
-        if step == 7 { /* envelope */ }
+        if step == 7 {
+            self.pulse_channel1.clock_envelop();
+            self.pulse_channel2.clock_envelop();
+        }
     }
 
     pub fn tick_frequency_timer(&mut self) {
+        self.tick_audio_sampling();
         self.pulse_channel1.tick();
         self.pulse_channel2.tick();
     }
 
-    // fn
+    fn get_audio_output(&self) -> f32 {
+        self.pulse_channel2.get_dac_output()
+    }
+
+    pub fn tick_audio_sampling(&mut self) {
+        self.sample_counter += SAMPLE_RATE;
+
+        if self.sample_counter >= CPU_FREQUENCY {
+            self.sample_counter -= CPU_FREQUENCY;
+
+            let sample = self.get_audio_output();
+
+            self.audio_buffer.push(sample);
+        }
+    }
 }
