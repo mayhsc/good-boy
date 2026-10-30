@@ -122,6 +122,7 @@ impl Bus for MemoryMap {
     fn tick_timers(&mut self, t_cycles: u32) {
         for _ in 0..t_cycles {
             let ev = self.timer.tick();
+            self.apu.tick_frequency_timer();
             if ev.interrupt {
                 let f = self.read(IF_ADDR) | (1 << 2);
                 self.write(IF_ADDR, f);

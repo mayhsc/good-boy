@@ -1,124 +1,137 @@
+use crate::apu::pulse_channel::PulseChannel;
+
+mod pulse_channel;
+
+#[derive(Default)]
+#[rustfmt::skip]
 pub(crate) struct Apu {
-    regs: [u8; 0x17],      // 0xFF10..=0xFF26
-    wave_ram: [u8; 16],    // 0xFF30..=0xFF3F
-    power: bool,           // NR52 bit 7
-    channel_on: [bool; 4], // NR52 bits 0-3 (read-only status)
+    pulse_channel1: PulseChannel,
+    pulse_channel2: PulseChannel,
+    nr30: u8, nr31: u8, nr32: u8, nr33: u8, nr34: u8,
+    nr41: u8, nr42: u8, nr43: u8, nr44: u8,
+    nr50: u8, nr51: u8,
+    wave_ram: [u8; 16],
+    power: bool,
+    channel_on: [bool; 2],
     counter: u8,
 }
 
-// Bits that always read back as 1
-const READ_MASK: [u8; 0x17] = [
-    0x80, 0x3F, 0x00, 0xFF, 0xBF, // NR10-NR14
-    0xFF, 0x3F, 0x00, 0xFF, 0xBF, // unused 0xFF15, NR21-NR24
-    0x7F, 0xFF, 0x9F, 0xFF, 0xBF, // NR30-NR34
-    0xFF, 0xFF, 0x00, 0x00, 0xBF, // unused 0xFF1F, NR41-NR44
-    0x00, 0x00, 0x70, // NR50, NR51, NR52 (status bits added on read)
-];
-
 impl Apu {
     pub fn new() -> Self {
-        let mut regs = [0u8; 0x17];
-        regs[0x00] = 0x80;
-        regs[0x01] = 0xBF;
-        regs[0x02] = 0xF3;
-        regs[0x03] = 0xFF;
-        regs[0x04] = 0xBF;
-        regs[0x06] = 0x3F;
-        regs[0x07] = 0x00;
-        regs[0x08] = 0xFF;
-        regs[0x09] = 0xBF;
-        regs[0x0A] = 0x7F;
-        regs[0x0B] = 0xFF;
-        regs[0x0C] = 0x9F;
-        regs[0x0D] = 0xFF;
-        regs[0x0E] = 0xBF;
-        regs[0x10] = 0xFF;
-        regs[0x11] = 0x00;
-        regs[0x12] = 0x00;
-        regs[0x13] = 0xBF;
-        regs[0x14] = 0x77;
-        regs[0x15] = 0xF3;
         Self {
-            regs,
-            wave_ram: [0; 16],
+            nr50: 0x77,
+            nr51: 0xF3,
             power: true,
-            channel_on: [true, false, false, false],
-            counter: 0,
+            channel_on: [false, false], // NR52 reads 0xF1
+            pulse_channel1: PulseChannel::new(0x80, 0xf3, true),
+            ..Default::default()
         }
     }
 
     pub fn read(&self, addr: u16) -> u8 {
         match addr {
-            0xFF10..=0xFF25 => {
-                let i = (addr - 0xFF10) as usize;
-                self.regs[i] | READ_MASK[i]
-            }
+            0xFF10..=0xFF14 => self.pulse_channel1.read(addr - 0xFF10),
+            0xFF16..=0xFF19 => self.pulse_channel2.read(addr - 0xFF15),
+
+            0xFF1A => self.nr30 | 0x7F,
+            0xFF1B => 0xFF,
+            0xFF1C => self.nr32 | 0x9F,
+            0xFF1D => 0xFF,
+            0xFF1E => self.nr34 | 0xBF,
+
+            0xFF20 => 0xFF,
+            0xFF21 => self.nr42,
+            0xFF22 => self.nr43,
+            0xFF23 => self.nr44 | 0xBF,
+
+            0xFF24 => self.nr50,
+            0xFF25 => self.nr51,
             0xFF26 => {
-                let status = self
-                    .channel_on
+                let channel_on = [
+                    self.pulse_channel1.channel_on,
+                    self.pulse_channel2.channel_on,
+                    self.channel_on[0],
+                    self.channel_on[1],
+                ];
+
+                let status = channel_on
                     .iter()
                     .enumerate()
-                    .fold(0u8, |acc, (i, &on)| acc | ((on as u8) << i));
+                    .fold(0u8, |a, (i, &on)| a | ((on as u8) << i));
                 ((self.power as u8) << 7) | 0x70 | status
             }
-            0xFF27..=0xFF2F => 0xFF,
             0xFF30..=0xFF3F => self.wave_ram[(addr - 0xFF30) as usize],
-            _ => 0xFF,
+            _ => 0xFF, // 0xFF15, 0xFF1F, 0xFF27..=0xFF2F
         }
     }
 
-    pub fn write(&mut self, addr: u16, value: u8) {
+    pub fn write(&mut self, addr: u16, v: u8) {
         match addr {
             0xFF26 => {
-                let on = value & 0x80 != 0;
+                let on = v & 0x80 != 0;
                 if self.power && !on {
-                    self.regs[..0x15].fill(0);
-                    self.channel_on = [false; 4];
+                    *self = Apu {
+                        wave_ram: self.wave_ram,
+                        ..Default::default()
+                    };
                 } else if !self.power && on {
+                    // TODO: reset frame sequencer step to 0
                 }
                 self.power = on;
             }
-            0xFF30..=0xFF3F => {
-                self.wave_ram[(addr - 0xFF30) as usize] = value;
+            0xFF30..=0xFF3F => self.wave_ram[(addr - 0xFF30) as usize] = v,
+            _ if !self.power => {}
+            0xFF10..=0xFF14 => self.pulse_channel1.write(addr - 0xFF10, v),
+            0xFF16..=0xFF19 => self.pulse_channel2.write(addr - 0xFF15, v),
+            0xFF1A => {
+                self.nr30 = v;
+                if v & 0x80 == 0 {
+                    self.channel_on[0] = false;
+                }
             }
-            0xFF10..=0xFF25 if self.power => {
-                self.regs[(addr - 0xFF10) as usize] = value;
-                self.on_register_write(addr, value);
+            0xFF1B => self.nr31 = v,
+            0xFF1C => self.nr32 = v,
+            0xFF1D => self.nr33 = v,
+            0xFF1E => {
+                self.nr34 = v;
+                if v & 0x80 != 0 {
+                    self.channel_on[0] = self.nr30 & 0x80 != 0;
+                }
             }
-            _ => {}
-        }
-    }
-
-    fn on_register_write(&mut self, addr: u16, value: u8) {
-        let trigger = value & 0x80 != 0;
-        match addr {
-            0xFF14 if trigger => self.channel_on[0] = self.regs[0x02] & 0xF8 != 0,
-            0xFF19 if trigger => self.channel_on[1] = self.regs[0x07] & 0xF8 != 0,
-            0xFF1E if trigger => self.channel_on[2] = self.regs[0x0A] & 0x80 != 0,
-            0xFF23 if trigger => self.channel_on[3] = self.regs[0x11] & 0xF8 != 0,
-            0xFF12 if value & 0xF8 == 0 => self.channel_on[0] = false,
-            0xFF17 if value & 0xF8 == 0 => self.channel_on[1] = false,
-            0xFF1A if value & 0x80 == 0 => self.channel_on[2] = false,
-            0xFF21 if value & 0xF8 == 0 => self.channel_on[3] = false,
+            0xFF20 => self.nr41 = v,
+            0xFF21 => {
+                self.nr42 = v;
+                if v & 0xF8 == 0 {
+                    self.channel_on[1] = false;
+                }
+            }
+            0xFF22 => self.nr43 = v,
+            0xFF23 => {
+                self.nr44 = v;
+                if v & 0x80 != 0 {
+                    self.channel_on[1] = self.nr42 & 0xF8 != 0;
+                }
+            }
+            0xFF24 => self.nr50 = v,
+            0xFF25 => self.nr51 = v,
             _ => {}
         }
     }
 
     pub fn tick_frame_sequencer(&mut self) {
-        self.counter += 1;
-        let counter = self.counter;
-
-        if counter % 2 == 0 {
-            // Sound length
-        }
-
-        if counter % 4 == 0 {
-            // CH1 freq sweep
-        }
-
-        if counter == 8  {
-            self.counter = 0;
-            // Envelope sweep
-        }
+        let step = self.counter;
+        self.counter = (self.counter + 1) % 8;
+        if step % 2 == 0 { /* length */ }
+        if step == 2 || step == 6 { /* sweep */ }
+        if step == 7 { /* envelope */ }
     }
+
+    pub fn tick_frequency_timer(&mut self) {
+        // self.frequency_timer -= 1;
+        // if self.frequency_timer == 0 {
+        //     self.frequency_timer = (2048 - self.frequency) * 4;
+        // }
+    }
+
+    // fn
 }
