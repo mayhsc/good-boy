@@ -127,10 +127,8 @@ impl Apu {
     }
 
     pub fn tick_frequency_timer(&mut self) {
-        // self.frequency_timer -= 1;
-        // if self.frequency_timer == 0 {
-        //     self.frequency_timer = (2048 - self.frequency) * 4;
-        // }
+        self.pulse_channel1.tick();
+        self.pulse_channel2.tick();
     }
 
     // fn

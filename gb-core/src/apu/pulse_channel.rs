@@ -50,4 +50,15 @@ impl PulseChannel {
             _ => unreachable!(),
         }
     }
+
+    pub fn tick(&mut self) {
+        self.frequency_timer -= 1;
+        if self.frequency_timer == 0 {
+            self.frequency_timer = (2048 - self.frequency()) * 4;
+        }
+    }
+
+    fn frequency(&self) -> u16 {
+        (self.nrx4 as u16 & 0x6F) << 8 | self.nrx3 as u16
+    }
 }
