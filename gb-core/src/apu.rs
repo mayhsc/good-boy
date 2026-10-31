@@ -129,7 +129,9 @@ impl Apu {
         let step = self.counter;
         self.counter = (self.counter + 1) % 8;
         if step % 2 == 0 { /* length */ }
-        if step == 2 || step == 6 { /* sweep */ }
+        if step == 2 || step == 6 {
+            self.pulse_channel1.clock_sweep();
+        }
         if step == 7 {
             self.pulse_channel1.clock_envelop();
             self.pulse_channel2.clock_envelop();

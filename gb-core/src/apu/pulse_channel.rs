@@ -10,6 +10,11 @@ pub(super) struct PulseChannel {
     period_timer: u8,
     volume: u8,
     wave_duty_position: usize,
+
+    // Channel 1 only
+    sweep_enabled: bool,
+    shadow_frequency: u16,
+    sweep_timer: u8,
 }
 
 const WAVE_DUTY_TABLE: [[u8; 8]; 4] = [
@@ -47,7 +52,7 @@ impl PulseChannel {
             2 => {
                 self.nrx2 = v;
                 if v & 0xF8 == 0 {
-                    self.channel_on = false;
+                    self.trigger();
                 }
             }
             3 => self.nrx3 = v,
@@ -60,6 +65,16 @@ impl PulseChannel {
             }
             _ => unreachable!(),
         }
+    }
+
+    fn trigger(&mut self) {
+        self.channel_on = self.dac_enabled();
+        self.frequency_timer = (2048 - self.frequency()) * 4;
+        self.volume = self.nrx2 >> 4;
+        // self.period_timer = self.envelope_period();
+        self.wave_duty_position = 0;
+        self.shadow_frequency = self.frequency();
+        self.sweep_enabled = self.sweep_period() != 0 || self.sweep_shift() != 0;
     }
 
     pub fn tick(&mut self) {
@@ -75,6 +90,11 @@ impl PulseChannel {
 
     fn frequency(&self) -> u16 {
         (self.nrx4 as u16 & 0x07) << 8 | self.nrx3 as u16
+    }
+
+    fn set_frequency(&mut self, frequency: u16) {
+        self.nrx3 = frequency as u8;
+        self.nrx4 = (self.nrx4 & 0xF8) | ((frequency >> 8) as u8 & 0x07);
     }
 
     pub fn clock_envelop(&mut self) {
@@ -104,6 +124,55 @@ impl PulseChannel {
 
     fn envelope_direction_upwards(&self) -> bool {
         self.nrx2 & 0x08 != 0
+    }
+
+    pub fn clock_sweep(&mut self) {
+        if self.sweep_timer > 0 {
+            self.sweep_timer -= 1;
+        }
+
+        if self.sweep_timer != 0 {
+            return;
+        }
+
+        let sweep_period = self.sweep_period();
+        self.sweep_timer = if sweep_period == 0 { 8 } else { sweep_period };
+
+        if self.sweep_enabled && sweep_period != 0 {
+            let new_frequency = self.calculate_shadow_frequency();
+            if new_frequency <= 2047 && self.sweep_shift() > 0 {
+                self.set_frequency(new_frequency);
+                self.shadow_frequency = new_frequency;
+
+                self.calculate_shadow_frequency();
+            }
+        }
+    }
+
+    fn sweep_period(&self) -> u8 {
+        (self.nrx0 >> 4) & 0x07
+    }
+
+    fn calculate_shadow_frequency(&mut self) -> u16 {
+        let mut new_frequency = self.shadow_frequency >> self.sweep_shift();
+
+        new_frequency = if self.sweep_increasing() {
+            self.shadow_frequency + new_frequency
+        } else {
+            self.shadow_frequency - new_frequency
+        };
+        if new_frequency > 2047 {
+            self.channel_on = false
+        }
+        new_frequency
+    }
+
+    fn sweep_shift(&self) -> u8 {
+        self.nrx0 & 0x07
+    }
+
+    fn sweep_increasing(&self) -> bool {
+        (self.nrx0 >> 3) & 0x01 == 1
     }
 
     fn wave_duty_pattern(&self) -> usize {
