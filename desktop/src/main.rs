@@ -41,7 +41,7 @@ fn main() {
 
     let audio_subsystem = sdl_context.audio().unwrap();
 
-    let spec = AudioSpec::new(Some(44100), Some(1), Some(AudioFormat::f32_sys()));
+    let spec = AudioSpec::new(Some(44100), Some(2), Some(AudioFormat::f32_sys()));
 
     let device = audio_subsystem
         .open_playback_stream(

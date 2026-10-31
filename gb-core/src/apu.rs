@@ -128,7 +128,10 @@ impl Apu {
     pub fn tick_frame_sequencer(&mut self) {
         let step = self.counter;
         self.counter = (self.counter + 1) % 8;
-        if step % 2 == 0 { /* length */ }
+        if step % 2 == 0 {
+            self.pulse_channel1.clock_length();
+            self.pulse_channel2.clock_length();
+        }
         if step == 2 || step == 6 {
             self.pulse_channel1.clock_sweep();
         }
@@ -144,19 +147,39 @@ impl Apu {
         self.pulse_channel2.tick();
     }
 
-    fn combine_channels(&self) -> f32 {
-        self.pulse_channel2.get_dac_output()
-    }
+    fn mix_channels(&self) -> (f32, f32) {
+        let channels = [
+            self.pulse_channel1.get_dac_output(),
+            self.pulse_channel2.get_dac_output(),
+            // self.wave.get_dac_output(),
+            // self.noise.get_dac_output(),
+        ];
 
+        let mut left = 0.0;
+        let mut right = 0.0;
+
+        for (i, sample) in channels.iter().enumerate() {
+            if self.nr51 & (1 << i) != 0 {
+                right += sample;
+            }
+
+            if self.nr51 & (1 << (i + 4)) != 0 {
+                left += sample;
+            }
+        }
+
+        (left / 4.0, right / 4.0)
+    }
     fn tick_audio_sampling(&mut self) {
         self.sample_counter += SAMPLE_RATE;
 
         if self.sample_counter >= CPU_FREQUENCY {
             self.sample_counter -= CPU_FREQUENCY;
 
-            let sample = self.combine_channels();
+            let (l, r) = self.mix_channels();
 
-            self.samples.push(sample);
+            self.samples.push(l);
+            self.samples.push(r);
         }
     }
 

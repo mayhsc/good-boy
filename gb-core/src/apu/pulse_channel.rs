@@ -6,15 +6,20 @@ pub(super) struct PulseChannel {
     nrx3: u8,
     nrx4: u8,
     pub channel_on: bool,
+
+    // Envelop
     frequency_timer: u16,
     period_timer: u8,
     volume: u8,
     wave_duty_position: usize,
 
-    // Channel 1 only
+    // Sweep (Channel 1)
     sweep_enabled: bool,
     shadow_frequency: u16,
     sweep_timer: u8,
+
+    // Length
+    length_timer: u8,
 }
 
 const WAVE_DUTY_TABLE: [[u8; 8]; 4] = [
@@ -75,6 +80,7 @@ impl PulseChannel {
         self.wave_duty_position = 0;
         self.shadow_frequency = self.frequency();
         self.sweep_enabled = self.sweep_period() != 0 || self.sweep_shift() != 0;
+        self.length_timer = 64 - (self.nrx1 & 0x3F);
     }
 
     pub fn tick(&mut self) {
@@ -173,6 +179,21 @@ impl PulseChannel {
 
     fn sweep_increasing(&self) -> bool {
         (self.nrx0 >> 3) & 0x01 == 1
+    }
+
+    pub fn clock_length(&mut self) {
+
+        
+        if self.length_timer > 0  && !self.length_enabled(){
+            self.length_timer -= 1;
+            if self.length_timer == 0 {
+                self.channel_on = false;
+            }
+        }
+    }
+
+    fn length_enabled(&self) -> bool {
+        (self.nrx4 >> 6) & 0x01 != 0
     }
 
     fn wave_duty_pattern(&self) -> usize {
