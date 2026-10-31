@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(super) struct PulseChannel {
     nrx0: u8,
     nrx1: u8,
@@ -12,23 +12,6 @@ pub(super) struct PulseChannel {
     wave_duty_position: usize,
 }
 
-impl Default for PulseChannel {
-    fn default() -> Self {
-        Self {
-            nrx0: 0,
-            nrx1: 0,
-            nrx2: 0,
-            nrx3: 0,
-            nrx4: 0,
-            channel_on: false,
-            frequency_timer: 1, // TODO
-            period_timer: 0,
-            volume: 0,
-            wave_duty_position: 0,
-        }
-    }
-}
-
 const WAVE_DUTY_TABLE: [[u8; 8]; 4] = [
     [0, 0, 0, 0, 0, 0, 0, 1], // 12.5%
     [1, 0, 0, 0, 0, 0, 0, 1], // 25%
@@ -39,7 +22,6 @@ const WAVE_DUTY_TABLE: [[u8; 8]; 4] = [
 impl PulseChannel {
     pub fn new(nrx1: u8, nrx2: u8, channel_on: bool) -> Self {
         PulseChannel {
-            frequency_timer: 1,
             nrx1: nrx1,
             nrx2: nrx2,
             channel_on: channel_on,
@@ -81,7 +63,10 @@ impl PulseChannel {
     }
 
     pub fn tick(&mut self) {
-        self.frequency_timer -= 1;
+        if self.frequency_timer > 0 {
+            self.frequency_timer -= 1;
+        }
+
         if self.frequency_timer == 0 {
             self.frequency_timer = (2048 - self.frequency()) * 4;
             self.wave_duty_position = (self.wave_duty_position + 1) % 8
@@ -106,9 +91,9 @@ impl PulseChannel {
         }
 
         self.period_timer = self.enevelop_period();
-        if self.volume < 0xF && self.envelop_dxn_upwards() {
+        if self.volume < 0xF && self.envelope_direction_upwards() {
             self.volume += 1;
-        } else if self.volume > 0x0 && !self.envelop_dxn_upwards() {
+        } else if self.volume > 0x0 && !self.envelope_direction_upwards() {
             self.volume -= 1;
         }
     }
@@ -117,8 +102,8 @@ impl PulseChannel {
         self.nrx2 & 0x7
     }
 
-    fn envelop_dxn_upwards(&self) -> bool {
-        (self.nrx2 >> 3) & 0x3 != 0
+    fn envelope_direction_upwards(&self) -> bool {
+        self.nrx2 & 0x08 != 0
     }
 
     fn wave_duty_pattern(&self) -> usize {
@@ -129,7 +114,15 @@ impl PulseChannel {
         WAVE_DUTY_TABLE[self.wave_duty_pattern()][self.wave_duty_position]
     }
 
+    fn dac_enabled(&self) -> bool {
+        self.nrx2 & 0xF8 != 0
+    }
+
     pub fn get_dac_output(&self) -> f32 {
+        if !self.dac_enabled() {
+            return 0.0;
+        }
+
         let dac_input = self.duty_cycle_amplitude() as f32 * self.volume as f32;
 
         (dac_input / 7.5) - 1.0
