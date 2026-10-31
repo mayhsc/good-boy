@@ -690,4 +690,8 @@ impl Cpu<MemoryMap> {
     pub fn release(&mut self, btn: Button) {
         self.bus.release(btn);
     }
+
+    pub fn swap_samples(&mut self, out: &mut Vec<f32>) {
+        self.bus.swap_samples(out);
+    }
 }

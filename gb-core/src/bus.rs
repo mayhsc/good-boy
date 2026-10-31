@@ -181,4 +181,8 @@ impl MemoryMap {
     pub fn release(&mut self, btn: Button) {
         self.joypad.release(btn);
     }
+
+    pub fn swap_samples(&mut self, out: &mut Vec<f32>) {
+        self.apu.swap_samples(out);
+    }
 }

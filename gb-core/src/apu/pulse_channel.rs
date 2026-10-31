@@ -1,4 +1,4 @@
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(super) struct PulseChannel {
     nrx0: u8,
     nrx1: u8,
@@ -12,6 +12,23 @@ pub(super) struct PulseChannel {
     wave_duty_position: usize,
 }
 
+impl Default for PulseChannel {
+    fn default() -> Self {
+        Self {
+            nrx0: 0,
+            nrx1: 0,
+            nrx2: 0,
+            nrx3: 0,
+            nrx4: 0,
+            channel_on: false,
+            frequency_timer: 1, // TODO
+            period_timer: 0,
+            volume: 0,
+            wave_duty_position: 0,
+        }
+    }
+}
+
 const WAVE_DUTY_TABLE: [[u8; 8]; 4] = [
     [0, 0, 0, 0, 0, 0, 0, 1], // 12.5%
     [1, 0, 0, 0, 0, 0, 0, 1], // 25%
@@ -22,6 +39,7 @@ const WAVE_DUTY_TABLE: [[u8; 8]; 4] = [
 impl PulseChannel {
     pub fn new(nrx1: u8, nrx2: u8, channel_on: bool) -> Self {
         PulseChannel {
+            frequency_timer: 1,
             nrx1: nrx1,
             nrx2: nrx2,
             channel_on: channel_on,
@@ -71,7 +89,7 @@ impl PulseChannel {
     }
 
     fn frequency(&self) -> u16 {
-        (self.nrx4 as u16 & 0x6F) << 8 | self.nrx3 as u16
+        (self.nrx4 as u16 & 0x07) << 8 | self.nrx3 as u16
     }
 
     pub fn clock_envelop(&mut self) {

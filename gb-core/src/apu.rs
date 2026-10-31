@@ -4,6 +4,7 @@ mod pulse_channel;
 
 const CPU_FREQUENCY: f64 = 4_194_304.0;
 const SAMPLE_RATE: f64 = 44_100.0;
+const BUFFER_CAPACITY: usize = 8192;
 
 #[derive(Default)]
 #[rustfmt::skip]
@@ -18,12 +19,13 @@ pub(crate) struct Apu {
     channel_on: [bool; 2],
     counter: u8,
     sample_counter: f64,
-    audio_buffer: Vec<f32>
+    samples: Vec<f32>,
 }
 
 impl Apu {
     pub fn new() -> Self {
         Self {
+            samples: Vec::with_capacity(BUFFER_CAPACITY),
             nr50: 0x77,
             nr51: 0xF3,
             power: true,
@@ -140,19 +142,24 @@ impl Apu {
         self.pulse_channel2.tick();
     }
 
-    fn get_audio_output(&self) -> f32 {
+    fn combine_channels(&self) -> f32 {
         self.pulse_channel2.get_dac_output()
     }
 
-    pub fn tick_audio_sampling(&mut self) {
+    fn tick_audio_sampling(&mut self) {
         self.sample_counter += SAMPLE_RATE;
 
         if self.sample_counter >= CPU_FREQUENCY {
             self.sample_counter -= CPU_FREQUENCY;
 
-            let sample = self.get_audio_output();
+            let sample = self.combine_channels();
 
-            self.audio_buffer.push(sample);
+            self.samples.push(sample);
         }
+    }
+
+    pub fn swap_samples(&mut self, out: &mut Vec<f32>) {
+        out.clear();
+        std::mem::swap(&mut self.samples, out);
     }
 }

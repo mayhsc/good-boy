@@ -1,12 +1,15 @@
-use std::env;
+mod audio;
+
 use std::fs::File;
 use std::io::Read;
+use std::{collections::VecDeque, env};
 
 use gb_core::bus::MemoryMap;
 use gb_core::cpu::Cpu;
 use gb_core::joypad::Button;
 use sdl3::{
     VideoSubsystem,
+    audio::{AudioFormat, AudioSpec},
     event::Event,
     keyboard::{Keycode, Mod},
     pixels::{Color, PixelFormat},
@@ -14,6 +17,8 @@ use sdl3::{
     sys::{render::SDL_SetTextureScaleMode, surface::SDL_SCALEMODE_NEAREST},
     video::Window,
 };
+
+use crate::audio::EmulatorAudio;
 
 const RESOLUTION_X: u32 = 160;
 const RESOLUTION_Y: u32 = 144;
@@ -28,9 +33,26 @@ fn main() {
     }
 
     let sdl_context = sdl3::init().unwrap();
+
     let video_subsystem = sdl_context.video().unwrap();
     let mut event_pump = sdl_context.event_pump().unwrap();
 
+    let mut samples: Vec<f32> = Vec::with_capacity(2048);
+
+    let audio_subsystem = sdl_context.audio().unwrap();
+
+    let spec = AudioSpec::new(Some(44100), Some(1), Some(AudioFormat::f32_sys()));
+
+    let device = audio_subsystem
+        .open_playback_stream(
+            &spec,
+            EmulatorAudio {
+                samples: VecDeque::new(),
+            },
+        )
+        .unwrap();
+
+    device.resume().unwrap();
     let mut canvas = create_canvas(&video_subsystem);
 
     let mut rom = File::open(&args[1]).expect("Unable to open file");
@@ -104,6 +126,11 @@ fn main() {
                 break;
             }
         }
+
+        cpu.swap_samples(&mut samples);
+        device.put_data_f32(&samples).unwrap();
+        samples.clear();
+
         to_rgba(cpu.frame_buffer(), &mut rgba, cpu.drawn());
 
         draw_screen(&mut canvas, &mut texture, &rgba);
