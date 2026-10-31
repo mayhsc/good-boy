@@ -53,20 +53,23 @@ impl PulseChannel {
     pub fn write(&mut self, addr: u16, v: u8) {
         match addr {
             0 => self.nrx0 = v,
-            1 => self.nrx1 = v,
+            1 => {
+                self.nrx1 = v;
+                self.length_timer = 64 - (v & 0x3F);
+            }
             2 => {
                 self.nrx2 = v;
-                if v & 0xF8 == 0 {
-                    self.trigger();
+                if !self.dac_enabled() {
+                    self.channel_on = false;
                 }
             }
             3 => self.nrx3 = v,
             4 => {
                 self.nrx4 = v;
+
                 if v & 0x80 != 0 {
-                    self.channel_on = self.nrx2 & 0xF8 != 0;
+                    self.trigger();
                 }
-                self.volume = self.nrx2 >> 4;
             }
             _ => unreachable!(),
         }
@@ -74,13 +77,30 @@ impl PulseChannel {
 
     fn trigger(&mut self) {
         self.channel_on = self.dac_enabled();
+
         self.frequency_timer = (2048 - self.frequency()) * 4;
+
         self.volume = self.nrx2 >> 4;
-        // self.period_timer = self.envelope_period();
+
+        let p = self.enevelop_period();
+        self.period_timer = if p == 0 { 8 } else { p };
+
         self.wave_duty_position = 0;
+
         self.shadow_frequency = self.frequency();
-        self.sweep_enabled = self.sweep_period() != 0 || self.sweep_shift() != 0;
-        self.length_timer = 64 - (self.nrx1 & 0x3F);
+
+        let sweep_period = self.sweep_period();
+        self.sweep_timer = if sweep_period == 0 { 8 } else { sweep_period };
+
+        self.sweep_enabled = sweep_period != 0 || self.sweep_shift() != 0;
+
+        if self.length_timer == 0 {
+            self.length_timer = 64;
+        }
+
+        if self.sweep_shift() != 0 {
+            self.calculate_shadow_frequency();
+        }
     }
 
     pub fn tick(&mut self) {
@@ -141,17 +161,25 @@ impl PulseChannel {
             return;
         }
 
-        let sweep_period = self.sweep_period();
-        self.sweep_timer = if sweep_period == 0 { 8 } else { sweep_period };
+        let period = self.sweep_period();
 
-        if self.sweep_enabled && sweep_period != 0 {
-            let new_frequency = self.calculate_shadow_frequency();
-            if new_frequency <= 2047 && self.sweep_shift() > 0 {
-                self.set_frequency(new_frequency);
-                self.shadow_frequency = new_frequency;
+        self.sweep_timer = if period == 0 { 8 } else { period };
 
-                self.calculate_shadow_frequency();
-            }
+        if !self.sweep_enabled || period == 0 {
+            return;
+        }
+
+        if self.sweep_shift() == 0 {
+            return;
+        }
+
+        let new_frequency = self.calculate_shadow_frequency();
+
+        if new_frequency <= 2047 && self.channel_on {
+            self.shadow_frequency = new_frequency;
+            self.set_frequency(new_frequency);
+
+            self.calculate_shadow_frequency();
         }
     }
 
@@ -160,16 +188,18 @@ impl PulseChannel {
     }
 
     fn calculate_shadow_frequency(&mut self) -> u16 {
-        let mut new_frequency = self.shadow_frequency >> self.sweep_shift();
+        let delta = self.shadow_frequency >> self.sweep_shift();
 
-        new_frequency = if self.sweep_increasing() {
-            self.shadow_frequency + new_frequency
+        let new_frequency = if self.sweep_increasing() {
+            self.shadow_frequency.saturating_add(delta)
         } else {
-            self.shadow_frequency - new_frequency
+            self.shadow_frequency.saturating_sub(delta)
         };
+
         if new_frequency > 2047 {
-            self.channel_on = false
+            self.channel_on = false;
         }
+
         new_frequency
     }
 
@@ -182,9 +212,7 @@ impl PulseChannel {
     }
 
     pub fn clock_length(&mut self) {
-
-        
-        if self.length_timer > 0  && !self.length_enabled(){
+        if self.length_timer > 0 && self.length_enabled() {
             self.length_timer -= 1;
             if self.length_timer == 0 {
                 self.channel_on = false;
@@ -209,7 +237,7 @@ impl PulseChannel {
     }
 
     pub fn get_dac_output(&self) -> f32 {
-        if !self.dac_enabled() {
+        if !self.dac_enabled() || !self.channel_on {
             return 0.0;
         }
 
