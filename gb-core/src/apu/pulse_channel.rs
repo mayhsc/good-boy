@@ -11,15 +11,13 @@ pub(super) struct PulseChannel {
 
     frequency_timer: u16,
     envelop: Envelope,
+    length: LengthCounter,
     wave_duty_position: usize,
 
     // Sweep (Channel 1)
     sweep_enabled: bool,
     shadow_frequency: u16,
     sweep_timer: u8,
-
-    // Length
-    length: LengthCounter,
 }
 
 const WAVE_DUTY_TABLE: [[u8; 8]; 4] = [
