@@ -1,6 +1,8 @@
 use crate::apu::pulse_channel::PulseChannel;
 
 mod pulse_channel;
+mod envelop;
+mod length;
 
 const CPU_FREQUENCY: f64 = 4_194_304.0;
 const SAMPLE_RATE: f64 = 44_100.0;

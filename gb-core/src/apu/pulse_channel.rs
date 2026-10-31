@@ -1,3 +1,5 @@
+use crate::apu::{envelop::Envelope, length::LengthCounter};
+
 #[derive(Debug, Default)]
 pub(super) struct PulseChannel {
     nrx0: u8,
@@ -7,10 +9,8 @@ pub(super) struct PulseChannel {
     nrx4: u8,
     pub channel_on: bool,
 
-    // Envelop
     frequency_timer: u16,
-    period_timer: u8,
-    volume: u8,
+    envelop: Envelope,
     wave_duty_position: usize,
 
     // Sweep (Channel 1)
@@ -19,7 +19,7 @@ pub(super) struct PulseChannel {
     sweep_timer: u8,
 
     // Length
-    length_timer: u8,
+    length: LengthCounter,
 }
 
 const WAVE_DUTY_TABLE: [[u8; 8]; 4] = [
@@ -55,13 +55,14 @@ impl PulseChannel {
             0 => self.nrx0 = v,
             1 => {
                 self.nrx1 = v;
-                self.length_timer = 64 - (v & 0x3F);
+                self.length.on_trigger(64 - (v as u16 & 0x3F));
             }
             2 => {
                 self.nrx2 = v;
                 if !self.dac_enabled() {
                     self.channel_on = false;
                 }
+                self.envelop.load_from_nrx2(self.nrx2);
             }
             3 => self.nrx3 = v,
             4 => {
@@ -78,12 +79,7 @@ impl PulseChannel {
     fn trigger(&mut self) {
         self.channel_on = self.dac_enabled();
 
-        self.frequency_timer = (2048 - self.frequency()) * 4;
-
-        self.volume = self.nrx2 >> 4;
-
-        let p = self.enevelop_period();
-        self.period_timer = if p == 0 { 8 } else { p };
+        self.envelop.trigger(self.nrx2);
 
         self.wave_duty_position = 0;
 
@@ -94,9 +90,7 @@ impl PulseChannel {
 
         self.sweep_enabled = sweep_period != 0 || self.sweep_shift() != 0;
 
-        if self.length_timer == 0 {
-            self.length_timer = 64;
-        }
+        self.length.on_trigger(64);
 
         if self.sweep_shift() != 0 {
             self.calculate_shadow_frequency();
@@ -124,32 +118,7 @@ impl PulseChannel {
     }
 
     pub fn clock_envelop(&mut self) {
-        if self.enevelop_period() == 0 {
-            return;
-        }
-
-        if self.period_timer > 0 {
-            self.period_timer -= 1;
-        }
-
-        if self.period_timer != 0 {
-            return;
-        }
-
-        self.period_timer = self.enevelop_period();
-        if self.volume < 0xF && self.envelope_direction_upwards() {
-            self.volume += 1;
-        } else if self.volume > 0x0 && !self.envelope_direction_upwards() {
-            self.volume -= 1;
-        }
-    }
-
-    fn enevelop_period(&self) -> u8 {
-        self.nrx2 & 0x7
-    }
-
-    fn envelope_direction_upwards(&self) -> bool {
-        self.nrx2 & 0x08 != 0
+        self.envelop.clock();
     }
 
     pub fn clock_sweep(&mut self) {
@@ -212,16 +181,9 @@ impl PulseChannel {
     }
 
     pub fn clock_length(&mut self) {
-        if self.length_timer > 0 && self.length_enabled() {
-            self.length_timer -= 1;
-            if self.length_timer == 0 {
-                self.channel_on = false;
-            }
+        if self.length.clock() {
+            self.channel_on = false;
         }
-    }
-
-    fn length_enabled(&self) -> bool {
-        (self.nrx4 >> 6) & 0x01 != 0
     }
 
     fn wave_duty_pattern(&self) -> usize {
@@ -241,7 +203,7 @@ impl PulseChannel {
             return 0.0;
         }
 
-        let dac_input = self.duty_cycle_amplitude() as f32 * self.volume as f32;
+        let dac_input = self.duty_cycle_amplitude() as f32 * self.envelop.volume as f32;
 
         (dac_input / 7.5) - 1.0
     }
