@@ -1,5 +1,5 @@
 #[derive(Debug, Default)]
-pub struct WaveChannel {
+pub(super) struct WaveChannel {
     nr30: u8,
     nr31: u8,
     nr32: u8,

@@ -1,9 +1,10 @@
-use crate::apu::{pulse_channel::PulseChannel, wave_channel::WaveChannel};
+use crate::apu::{noise_channel::NoiseChannel, pulse_channel::PulseChannel, wave_channel::WaveChannel};
 
 mod envelop;
 mod length;
 mod pulse_channel;
 mod wave_channel;
+mod noise_channel;
 
 const CPU_FREQUENCY: f64 = 4_194_304.0;
 const SAMPLE_RATE: f64 = 44_100.0;
@@ -15,10 +16,9 @@ pub(crate) struct Apu {
     pulse_channel1: PulseChannel,
     pulse_channel2: PulseChannel,
     wave_channel: WaveChannel,
-    nr41: u8, nr42: u8, nr43: u8, nr44: u8,
+    noise_channel: NoiseChannel,
     nr50: u8, nr51: u8,
     power: bool,
-    channel_on: [bool; 1],
     counter: u8,
     sample_counter: f64,
     samples: Vec<f32>,
@@ -31,7 +31,6 @@ impl Apu {
             nr50: 0x77,
             nr51: 0xF3,
             power: true,
-            channel_on: [false], // NR52 reads 0xF1
             pulse_channel1: PulseChannel::new(0x80, 0xf3, true),
             ..Default::default()
         }
@@ -42,12 +41,7 @@ impl Apu {
             0xFF10..=0xFF14 => self.pulse_channel1.read(addr - 0xFF10),
             0xFF16..=0xFF19 => self.pulse_channel2.read(addr - 0xFF15),
             0xFF1A..=0xFF1E => self.wave_channel.read(addr),
-
-            0xFF20 => 0xFF,
-            0xFF21 => self.nr42,
-            0xFF22 => self.nr43,
-            0xFF23 => self.nr44 | 0xBF,
-
+            0xFF20..=0xFF23 => self.noise_channel.read(addr),
             0xFF24 => self.nr50,
             0xFF25 => self.nr51,
             0xFF26 => {
@@ -55,7 +49,7 @@ impl Apu {
                     self.pulse_channel1.channel_on,
                     self.pulse_channel2.channel_on,
                     self.wave_channel.channel_on,
-                    self.channel_on[1],
+                    self.noise_channel.channel_on,
                 ];
 
                 let status = channel_on
@@ -88,20 +82,7 @@ impl Apu {
             0xFF10..=0xFF14 => self.pulse_channel1.write(addr - 0xFF10, v),
             0xFF16..=0xFF19 => self.pulse_channel2.write(addr - 0xFF15, v),
             0xFF1A..=0xFF1E => self.wave_channel.write(addr, v),
-            0xFF20 => self.nr41 = v,
-            0xFF21 => {
-                self.nr42 = v;
-                if v & 0xF8 == 0 {
-                    self.channel_on[1] = false;
-                }
-            }
-            0xFF22 => self.nr43 = v,
-            0xFF23 => {
-                self.nr44 = v;
-                if v & 0x80 != 0 {
-                    self.channel_on[1] = self.nr42 & 0xF8 != 0;
-                }
-            }
+            0xFF20..=0xFF23 => self.noise_channel.write(addr, v),
             0xFF24 => self.nr50 = v,
             0xFF25 => self.nr51 = v,
             _ => {}
