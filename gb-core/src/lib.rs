@@ -3,6 +3,7 @@ pub mod bus;
 pub mod timer;
 pub mod ppu;
 pub mod joypad;
+pub mod apu;
 
 #[cfg(test)]
 mod tests;
