@@ -1,10 +1,12 @@
-use crate::apu::{noise_channel::NoiseChannel, pulse_channel::PulseChannel, wave_channel::WaveChannel};
+use crate::apu::{
+    noise_channel::NoiseChannel, pulse_channel::PulseChannel, wave_channel::WaveChannel,
+};
 
 mod envelop;
 mod length;
+mod noise_channel;
 mod pulse_channel;
 mod wave_channel;
-mod noise_channel;
 
 const CPU_FREQUENCY: f64 = 4_194_304.0;
 const SAMPLE_RATE: f64 = 44_100.0;
@@ -95,6 +97,8 @@ impl Apu {
         if step % 2 == 0 {
             self.pulse_channel1.clock_length();
             self.pulse_channel2.clock_length();
+            self.wave_channel.clock_length();
+            self.noise_channel.clock_length();
         }
         if step == 2 || step == 6 {
             self.pulse_channel1.clock_sweep();
@@ -102,6 +106,7 @@ impl Apu {
         if step == 7 {
             self.pulse_channel1.clock_envelop();
             self.pulse_channel2.clock_envelop();
+            self.noise_channel.clock_envelop();
         }
     }
 
@@ -109,14 +114,16 @@ impl Apu {
         self.tick_audio_sampling();
         self.pulse_channel1.tick();
         self.pulse_channel2.tick();
+        self.wave_channel.tick();
+        self.noise_channel.tick();
     }
 
     fn mix_channels(&self) -> (f32, f32) {
         let channels = [
             self.pulse_channel1.get_dac_output(),
             self.pulse_channel2.get_dac_output(),
-            // self.wave.get_dac_output(),
-            // self.noise.get_dac_output(),
+            self.wave_channel.get_dac_output(),
+            self.noise_channel.get_dac_output(),
         ];
 
         let mut left = 0.0;
