@@ -1,6 +1,7 @@
 use crate::{
     IF_ADDR,
     apu::Apu,
+    bank::Bank,
     joypad::{Button, Joypad},
     ppu::Ppu,
     timer::Timer,
@@ -20,11 +21,7 @@ pub trait Bus {
 }
 
 pub struct MemoryMap {
-    rombank00: [u8; 0x4000],
-    rombank01_nn: [u8; 0x4000],
-
-    extram: [u8; 0x2000],
-
+    bank: Bank,
     wram0: [u8; 0x1000],
     wram1_7: [[u8; 0x1000]; 7],
 
@@ -42,10 +39,7 @@ pub struct MemoryMap {
 impl Default for MemoryMap {
     fn default() -> Self {
         Self {
-            rombank00: [0; 0x4000],
-            rombank01_nn: [0; 0x4000],
-
-            extram: [0; 0x2000],
+            bank: Bank::new(),
 
             wram0: [0; 0x1000],
             wram1_7: [[0; 0x1000]; 7],
@@ -66,9 +60,7 @@ impl Default for MemoryMap {
 impl Bus for MemoryMap {
     fn read(&self, addr: u16) -> u8 {
         match addr {
-            0x0000..=0x3FFF => self.rombank00[addr as usize],
-            0x4000..=0x7FFF => self.rombank01_nn[(addr - 0x4000) as usize],
-            0xA000..=0xBFFF => self.extram[(addr - 0xA000) as usize],
+            0x0000..=0x7FFF | 0xA000..=0xBFFF => self.bank.read(addr),
             0xC000..=0xCFFF => self.wram0[(addr - 0xC000) as usize],
             0xD000..=0xDFFF => {
                 let bank = 0;
@@ -88,9 +80,7 @@ impl Bus for MemoryMap {
 
     fn write(&mut self, addr: u16, value: u8) {
         match addr {
-            0x0000..=0x3FFF => {}
-            0x4000..=0x7FFF => {}
-            0xA000..=0xBFFF => self.extram[(addr - 0xA000) as usize] = value,
+            0x0000..=0x7FFF | 0xA000..=0xBFFF => self.bank.write(addr, value),
             0xC000..=0xCFFF => self.wram0[(addr - 0xC000) as usize] = value,
             0xD000..=0xDFFF => {
                 let bank = 0;
@@ -145,17 +135,7 @@ impl MemoryMap {
     }
 
     pub fn load(&mut self, data: &[u8]) {
-        let bank00_len = data.len().min(0x4000);
-        self.rombank00[..bank00_len].copy_from_slice(&data[..bank00_len]);
-
-        if data.len() > 0x4000 {
-            let bank01_len = (data.len() - 0x4000).min(0x4000);
-            self.rombank01_nn[..bank01_len].copy_from_slice(&data[0x4000..0x4000 + bank01_len]);
-        }
-
-        if data.len() > 0x8000 {
-            todo!();
-        }
+        self.bank.load(data);
     }
 
     pub fn framebuffer(&self) -> &[u8] {
