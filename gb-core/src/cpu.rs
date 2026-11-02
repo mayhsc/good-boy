@@ -402,10 +402,13 @@ impl<B: Bus> Cpu<B> {
                 let cb_op = self.fetch_byte();
                 self.execute_cb(cb_op);
             }
-            _ => panic!("Instruction has not been implemented yet"),
+            0x10 => {}
+            _ => {
+                println!("Opcode: {op}");
+                panic!("Instruction has not been implemented yet");
+            }
         };
     }
-
 
     fn execute_cb(&mut self, op: u8) {
         let reg_idx = op & 0b111;
