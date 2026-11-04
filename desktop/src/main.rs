@@ -1,4 +1,5 @@
 mod audio;
+mod save;
 
 use std::fs::File;
 use std::io::Read;
@@ -19,6 +20,7 @@ use sdl3::{
 };
 
 use crate::audio::EmulatorAudio;
+use crate::save::{create_save, show_save_error_dialog};
 
 const RESOLUTION_X: u32 = 160;
 const RESOLUTION_Y: u32 = 144;
@@ -86,7 +88,14 @@ fn main() {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => {
-                    break 'gameloop;
+                    // let success = match cpu.dump_ext_ram() {
+                    //     Some(data) => create_save(data),
+                    //     None => true,
+                    // };
+                    let success = false;
+                    if success || show_save_error_dialog(&canvas) {
+                        break 'gameloop;
+                    }
                 }
                 Event::KeyDown {
                     keycode: Some(Keycode::K),

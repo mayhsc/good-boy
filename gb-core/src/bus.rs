@@ -170,4 +170,12 @@ impl MemoryMap {
     pub fn swap_samples(&mut self, out: &mut Vec<f32>) {
         self.apu.swap_samples(out);
     }
+
+    pub fn dump_ext_ram(&self) -> Option<&[u8]> {
+        if self.enable_saves {
+            Some(self.bank.dump_ext_ram())
+        } else {
+            None
+        }
+    }
 }

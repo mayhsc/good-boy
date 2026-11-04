@@ -191,4 +191,8 @@ impl Bank {
             _ => {}
         }
     }
+
+    pub fn dump_ext_ram(&self) -> &[u8] {
+        &self.ram
+    }
 }
