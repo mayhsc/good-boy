@@ -144,7 +144,7 @@ fn create_canvas(video_subsystem: &VideoSubsystem) -> Canvas<Window> {
     const WINDOW_HEIGHT: u32 = (RESOLUTION_Y as u32) * SCALE;
 
     let window = video_subsystem
-        .window("MAN", WINDOW_WIDTH, WINDOW_HEIGHT)
+        .window("Good Boy", WINDOW_WIDTH, WINDOW_HEIGHT)
         .position_centered()
         .opengl()
         // .resizable()
