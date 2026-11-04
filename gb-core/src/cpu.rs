@@ -12,9 +12,6 @@ use crate::{
     joypad::Button,
 };
 
-use std::fs::File;
-use std::io::{BufWriter, Write};
-
 pub struct Cpu<B: Bus> {
     pub(crate) regs: Registers,
     pub(crate) bus: B,
@@ -24,17 +21,10 @@ pub struct Cpu<B: Bus> {
     m_cycles: u32,
     halted: bool,
     halt_bug: bool,
-    // Logging for gameboy doctor
-    doctor_log: Option<BufWriter<File>>,
 }
 
 impl<B: Bus> Cpu<B> {
     pub fn new(bus: B) -> Self {
-        let root = project_root::get_project_root().expect("Failed to find git root");
-        let log_path = root.join("gb_doctor.log");
-        let file = File::create(log_path).expect("Failed to create file");
-        let writer = BufWriter::new(file);
-
         let mut cpu = Self {
             regs: Registers::default(),
             bus,
@@ -44,7 +34,6 @@ impl<B: Bus> Cpu<B> {
             m_cycles: 0,
             halted: false,
             halt_bug: false,
-            doctor_log: Some(writer),
         };
         cpu.opcode = cpu.fetch_byte();
         cpu
@@ -66,7 +55,6 @@ impl<B: Bus> Cpu<B> {
         }
 
         self.execute(self.opcode);
-        self.log();
         self.handle_interrupt();
 
         if self.ei_delay > 0 {
@@ -414,39 +402,12 @@ impl<B: Bus> Cpu<B> {
                 let cb_op = self.fetch_byte();
                 self.execute_cb(cb_op);
             }
-            _ => panic!("Instruction has not been implemented yet"),
+            0x10 => {}
+            _ => {
+                println!("Opcode: {op}");
+                panic!("Instruction has not been implemented yet");
+            }
         };
-    }
-
-    fn log(&mut self) {
-        if let Some(ref mut writer) = self.doctor_log {
-            let pc = self.regs.pc;
-            let m0 = self.bus.peek(pc);
-            let m1 = self.bus.peek(pc.wrapping_add(1));
-            let m2 = self.bus.peek(pc.wrapping_add(2));
-            let m3 = self.bus.peek(pc.wrapping_add(3));
-
-            let log_line = format!(
-                "A:{:02X} F:{:02X} B:{:02X} C:{:02X} D:{:02X} E:{:02X} H:{:02X} L:{:02X} SP:{:04X} PC:{:04X} PCMEM:{:02X},{:02X},{:02X},{:02X} IF:{:02x}\n",
-                self.regs.a,
-                self.regs.f.as_u8(),
-                self.regs.b,
-                self.regs.c,
-                self.regs.d,
-                self.regs.e,
-                self.regs.h,
-                self.regs.l,
-                self.regs.sp,
-                self.regs.pc,
-                m0,
-                m1,
-                m2,
-                m3,
-                self.bus.peek(IF_ADDR)
-            );
-
-            let _ = writer.write_all(log_line.as_bytes());
-        }
     }
 
     fn execute_cb(&mut self, op: u8) {

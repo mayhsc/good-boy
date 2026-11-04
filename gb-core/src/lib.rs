@@ -1,13 +1,14 @@
 pub mod cpu;
 pub mod bus;
-pub mod timer;
-pub mod ppu;
+mod timer;
+mod ppu;
 pub mod joypad;
-pub mod apu;
+mod apu;
+mod bank;
 
 #[cfg(test)]
 mod tests;
 
-pub const IE_ADDR: u16 = 0xFFFF;
-pub const IF_ADDR: u16 = 0xFF0F;
+const IE_ADDR: u16 = 0xFFFF;
+const IF_ADDR: u16 = 0xFF0F;
 
