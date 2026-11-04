@@ -69,7 +69,11 @@ impl Bank {
                 MBC::MBC1 => self.mbc1_write_rom(addr, value),
                 _ => todo!(),
             },
-            0xA000..=0xBFFF => self.extram[(addr - 0xA000) as usize] = value,
+            0xA000..=0xBFFF => match self.mbc {
+                MBC::NONE => self.extram[(addr - 0xA000) as usize] = value,
+                MBC::MBC1 => self.mbc1_write_ram(addr, value),
+                _ => todo!(),
+            },
             _ => unreachable!(),
         }
     }
@@ -103,6 +107,14 @@ impl Bank {
                 self.rom_mode = value == 0;
             }
             _ => unreachable!(),
+        }
+    }
+
+    fn mbc1_write_ram(&mut self, addr: u16, val: u8) {
+        if self.ram_enabled {
+            let rel_addr = (addr - 0xA000) as usize;
+            let ram_addr = (self.ram_bank as usize) * RAM_BANK_SIZE + rel_addr;
+            self.extram[ram_addr] = val;
         }
     }
 
