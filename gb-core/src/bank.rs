@@ -2,10 +2,12 @@ const ROM_BANK_SIZE: usize = 0x4000;
 const RAM_BANK_SIZE: usize = 0x2000;
 
 #[derive(Default)]
-enum MBC {
+pub(super) enum MBC {
     #[default]
     NONE,
     MBC1,
+    MBC3,
+    MBC5,
 }
 
 pub(super) struct Bank {
@@ -54,6 +56,7 @@ impl Bank {
                     let bank_addr = (self.ram_bank as usize) * RAM_BANK_SIZE + rel_addr;
                     self.extram[bank_addr]
                 }
+                _ => todo!(),
             },
             _ => unreachable!(),
         }
@@ -64,6 +67,7 @@ impl Bank {
             0x0000..=0x7FFF => match self.mbc {
                 MBC::NONE => {}
                 MBC::MBC1 => self.mbc1_write_rom(addr, value),
+                _ => todo!(),
             },
             0xA000..=0xBFFF => self.extram[(addr - 0xA000) as usize] = value,
             _ => unreachable!(),
@@ -102,7 +106,9 @@ impl Bank {
         }
     }
 
-    pub fn load(&mut self, data: &[u8]) {
+    pub fn load(&mut self, data: &[u8], mbc: MBC, ram_enable: bool) {
         self.rom.extend_from_slice(data);
+        self.mbc = mbc;
+        self.ram_enabled = ram_enable;
     }
 }
