@@ -137,7 +137,7 @@ impl MemoryMap {
     }
 
     pub fn load(&mut self, data: &[u8]) {
-        let cartridge_type = data.get(0x93);
+        let cartridge_type = data.get(0x147);
         let (mbc, ram_enable, save) = match cartridge_type {
             Some(v) => self.read_cartridge_type(*v),
             None => (MBC::NONE, false, false),
