@@ -1,7 +1,7 @@
 use crate::{
     IF_ADDR,
     apu::Apu,
-    bank::{Bank, MBC},
+    bank::{Bank},
     joypad::{Button, Joypad},
     ppu::Ppu,
     timer::Timer,
@@ -137,35 +137,12 @@ impl MemoryMap {
     }
 
     pub fn load(&mut self, data: &[u8]) {
-        let cartridge_type = data.get(0x147);
-        let (mbc, ram_enable, save) = match cartridge_type {
-            Some(v) => self.read_cartridge_type(*v),
-            None => (MBC::NONE, false, false),
-        };
-        self.enable_saves = save;
-        self.bank.load(data, mbc, ram_enable);
+        self.bank.load(data);
+        self.enable_saves = matches!(
+            data.get(0x147).copied().unwrap_or(0),
+            0x03 | 0x06 | 0x09 | 0x0D | 0x0F | 0x10 | 0x13 | 0x1B | 0x1E
+        );
     }
-
-    fn read_cartridge_type(&self, v: u8) -> (MBC, bool, bool) {
-        print!("V: {}\n", v);
-        match v {
-            0x00 => (MBC::NONE, false, false),
-            0x08 => (MBC::NONE, true, false),
-            0x09 => (MBC::NONE, true, true),
-            0x001 => (MBC::MBC1, false, false),
-            0x002 => (MBC::MBC1, true, false),
-            0x003 => (MBC::MBC1, true, true),
-            0x011 => (MBC::MBC3, false, false),
-            0x012 => (MBC::MBC3, true, false),
-            0x013 => (MBC::MBC3, true, true),
-            0x01A => (MBC::MBC5, true, false),
-            0x019 => (MBC::MBC5, false, false),
-            0x01B => (MBC::MBC5, true, true),
-
-            _ => unreachable!(),
-        }
-    }
-
     pub fn framebuffer(&self) -> &[u8] {
         &self.ppu.framebuffer()
     }
