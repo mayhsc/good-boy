@@ -1,3 +1,5 @@
+use std::fs;
+
 use sdl3::{
     messagebox::{
         ButtonData, ClickedButton, MessageBoxButtonFlag, MessageBoxFlag, show_message_box,
@@ -6,9 +8,11 @@ use sdl3::{
     video::Window,
 };
 
-pub fn create_save(data: &[u8]) -> bool {
+pub fn create_save(data: &[u8], name: &String) -> bool {
     if let Some(config_dir) = dirs::config_dir() {
-        true
+        let save_file_path = config_dir.join("Good Boy").join(name).with_extension("sav");
+        let res = fs::write(save_file_path, data);
+        res.is_ok()
     } else {
         false
     }

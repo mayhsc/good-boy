@@ -3,6 +3,7 @@ mod save;
 
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
 use std::{collections::VecDeque, env};
 
 use gb_core::bus::MemoryMap;
@@ -33,6 +34,8 @@ fn main() {
         println!("Usage: cargo run path/to/game");
         return;
     }
+    let mut rom = File::open(&args[1]).expect("Unable to open file");
+    let name = get_game_name(&args[1]);
 
     let sdl_context = sdl3::init().unwrap();
 
@@ -55,9 +58,8 @@ fn main() {
         .unwrap();
 
     device.resume().unwrap();
-    let mut canvas = create_canvas(&video_subsystem);
+    let mut canvas = create_canvas(&video_subsystem, &name);
 
-    let mut rom = File::open(&args[1]).expect("Unable to open file");
     let mut buffer = Vec::new();
     rom.read_to_end(&mut buffer).unwrap();
 
@@ -88,11 +90,10 @@ fn main() {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => {
-                    // let success = match cpu.dump_ext_ram() {
-                    //     Some(data) => create_save(data),
-                    //     None => true,
-                    // };
-                    let success = false;
+                    let success = match cpu.dump_ext_ram() {
+                        Some(data) => create_save(data, &args[1]),
+                        None => true,
+                    };
                     if success || show_save_error_dialog(&canvas) {
                         break 'gameloop;
                     }
@@ -148,12 +149,20 @@ fn main() {
     }
 }
 
-fn create_canvas(video_subsystem: &VideoSubsystem) -> Canvas<Window> {
+fn get_game_name(rom_path: &String) -> String {
+    let path = Path::new(rom_path);
+
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+
+    stem.to_owned()
+}
+
+fn create_canvas(video_subsystem: &VideoSubsystem, name: &String) -> Canvas<Window> {
     const WINDOW_WIDTH: u32 = (RESOLUTION_X as u32) * SCALE;
     const WINDOW_HEIGHT: u32 = (RESOLUTION_Y as u32) * SCALE;
 
     let window = video_subsystem
-        .window("Good Boy", WINDOW_WIDTH, WINDOW_HEIGHT)
+        .window(name, WINDOW_WIDTH, WINDOW_HEIGHT)
         .position_centered()
         .opengl()
         // .resizable()
