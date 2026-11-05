@@ -1,6 +1,55 @@
-use sdl3::{VideoSubsystem, render::Canvas, render::Texture, video::Window};
+use sdl3::{
+    VideoSubsystem,
+    pixels::PixelFormat,
+    render::Texture,
+    render::{Canvas, ScaleMode},
+    video::Window,
+};
 
-use crate::{RESOLUTION_X, RESOLUTION_Y, SCALE, palette::ColorPalette};
+use crate::{RESOLUTION_X, RESOLUTION_Y, SCALE, palette::ColorPalette, session::Session};
+
+pub struct Screen {
+    canvas: Canvas<Window>,
+    rgba: Vec<u8>,
+}
+
+impl Screen {
+    pub fn new(video: &VideoSubsystem, title: &str) -> Self {
+        Self {
+            canvas: create_canvas(video, &title.to_owned()),
+            rgba: vec![0; (RESOLUTION_X * RESOLUTION_Y * 4) as usize],
+        }
+    }
+
+    pub fn draw(&mut self, session: &Session, palette: &ColorPalette) {
+        to_rgba(
+            session.frame_buffer(),
+            &mut self.rgba,
+            session.drawn(),
+            palette,
+        );
+        let creator = self.canvas.texture_creator();
+        let mut texture = creator
+            .create_texture_streaming(PixelFormat::RGBA32, RESOLUTION_X, RESOLUTION_Y)
+            .unwrap();
+        texture.set_scale_mode(ScaleMode::Nearest);
+        draw_screen(&mut self.canvas, &mut texture, &self.rgba);
+        self.canvas.present();
+    }
+
+    pub fn clear(&mut self) {
+        self.canvas.clear();
+        self.canvas.present();
+    }
+
+    pub fn set_title(&mut self, title: &str) {
+        self.canvas.window_mut().set_title(title).unwrap();
+    }
+
+    pub fn confirm_quit_without_saving(&self) -> bool {
+        crate::save::show_save_error_dialog(&self.canvas)
+    }
+}
 
 pub fn create_canvas(video_subsystem: &VideoSubsystem, name: &String) -> Canvas<Window> {
     const WINDOW_WIDTH: u32 = (RESOLUTION_X as u32) * SCALE;
