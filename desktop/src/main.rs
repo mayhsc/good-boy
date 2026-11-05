@@ -1,28 +1,30 @@
 mod audio;
+mod display;
+mod save;
 
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
 use std::{collections::VecDeque, env};
 
 use gb_core::bus::MemoryMap;
 use gb_core::cpu::Cpu;
 use gb_core::joypad::Button;
 use sdl3::{
-    VideoSubsystem,
     audio::{AudioFormat, AudioSpec},
     event::Event,
     keyboard::{Keycode, Mod},
     pixels::{Color, PixelFormat},
-    render::{Canvas, Texture},
     sys::{render::SDL_SetTextureScaleMode, surface::SDL_SCALEMODE_NEAREST},
-    video::Window,
 };
 
 use crate::audio::EmulatorAudio;
+use crate::display::{create_canvas, draw_screen, to_rgba};
+use crate::save::{create_save, load_save, show_save_error_dialog};
 
 const RESOLUTION_X: u32 = 160;
 const RESOLUTION_Y: u32 = 144;
-const SCALE: u32 = 5;
+const SCALE: u32 = 1;
 const FRAME_M_CYCLES: u32 = 17_556;
 
 fn main() {
@@ -31,6 +33,9 @@ fn main() {
         println!("Usage: cargo run path/to/game");
         return;
     }
+    let mut rom = File::open(&args[1]).expect("Unable to open file");
+    let name = get_game_name(&args[1]);
+    let rom_path = Path::new(&args[1]);
 
     let sdl_context = sdl3::init().unwrap();
 
@@ -53,14 +58,14 @@ fn main() {
         .unwrap();
 
     device.resume().unwrap();
-    let mut canvas = create_canvas(&video_subsystem);
+    let mut canvas = create_canvas(&video_subsystem, &name);
 
-    let mut rom = File::open(&args[1]).expect("Unable to open file");
     let mut buffer = Vec::new();
     rom.read_to_end(&mut buffer).unwrap();
 
     let mut bus = MemoryMap::new();
-    bus.load(&buffer);
+
+    bus.load(&buffer, load_save(&rom_path));
     let mut cpu = Cpu::new(bus);
 
     let mut paused = false;
@@ -86,7 +91,13 @@ fn main() {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => {
-                    break 'gameloop;
+                    let success = match cpu.dump_ext_ram() {
+                        Some(data) => create_save(data, &rom_path),
+                        None => true,
+                    };
+                    if success || show_save_error_dialog(&canvas) {
+                        break 'gameloop;
+                    }
                 }
                 Event::KeyDown {
                     keycode: Some(Keycode::K),
@@ -139,60 +150,12 @@ fn main() {
     }
 }
 
-fn create_canvas(video_subsystem: &VideoSubsystem) -> Canvas<Window> {
-    const WINDOW_WIDTH: u32 = (RESOLUTION_X as u32) * SCALE;
-    const WINDOW_HEIGHT: u32 = (RESOLUTION_Y as u32) * SCALE;
+fn get_game_name(rom_path: &String) -> String {
+    let path = Path::new(rom_path);
 
-    let window = video_subsystem
-        .window("MAN", WINDOW_WIDTH, WINDOW_HEIGHT)
-        .position_centered()
-        .opengl()
-        // .resizable()
-        .build()
-        .unwrap();
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
 
-    let canvas = window.into_canvas();
-    // canvas.set_logical_size(
-    //     RESOLUTION_X,
-    //     RESOLUTION_Y,
-    //     SDL_RendererLogicalPresentation::INTEGER_SCALE,
-    // );
-
-    canvas
-}
-
-fn draw_screen(canvas: &mut Canvas<Window>, texture: &mut Texture<'_>, rgba: &[u8]) {
-    assert_eq!(rgba.len(), (RESOLUTION_X * RESOLUTION_Y * 4) as usize);
-    texture
-        .update(None, rgba, (RESOLUTION_X * 4) as usize)
-        .unwrap();
-    canvas.clear();
-    canvas.copy(texture, None, None).unwrap();
-}
-
-fn to_rgba(shades: &[u8], out: &mut [u8], drawn: &[bool]) {
-    // const PALETTE: [[u8; 4]; 4] = [
-    //     [0xC8, 0xCC, 0xC8, 0xFF],
-    //     [0xA0, 0xA4, 0xA0, 0xFF],
-    //     [0x68, 0x6C, 0x68, 0xFF],
-    //     [0x30, 0x34, 0x30, 0xFF],
-    // ];
-    const PALETTE: [[u8; 4]; 4] = [
-        [0xFF, 0xF6, 0xD3, 0xFF],
-        [0xF9, 0xA8, 0x75, 0xFF],
-        [0xEB, 0xCB, 0x6F, 0xFF],
-        [0x7C, 0x3F, 0x58, 0xFF],
-    ];
-
-    for (i, (&shade, &is_drawn)) in shades.iter().zip(drawn).enumerate() {
-        let rgba = if is_drawn {
-            &PALETTE[(shade & 3) as usize]
-        } else {
-            &[0x00, 0x00, 0x00, 0xFF]
-        };
-
-        out[i * 4..i * 4 + 4].copy_from_slice(rgba);
-    }
+    stem.to_owned()
 }
 
 fn handle_key_event(keycode: Option<Keycode>, pressed: bool, joypad: &mut Cpu<MemoryMap>) {

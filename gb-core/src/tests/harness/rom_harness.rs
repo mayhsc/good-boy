@@ -16,7 +16,7 @@ fn load(name: &str) -> Cpu<MemoryMap> {
     rom.read_to_end(&mut buffer).unwrap();
 
     let mut bus = MemoryMap::new();
-    bus.load(&buffer);
+    bus.load(&buffer, None);
 
     Cpu::new(bus)
 }

@@ -655,4 +655,8 @@ impl Cpu<MemoryMap> {
     pub fn swap_samples(&mut self, out: &mut Vec<f32>) {
         self.bus.swap_samples(out);
     }
+
+    pub fn dump_ext_ram(&self) -> Option<&[u8]> {
+        self.bus.dump_ext_ram()
+    }
 }

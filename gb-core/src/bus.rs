@@ -1,7 +1,7 @@
 use crate::{
     IF_ADDR,
     apu::Apu,
-    bank::{Bank},
+    bank::Bank,
     joypad::{Button, Joypad},
     ppu::Ppu,
     timer::Timer,
@@ -136,12 +136,15 @@ impl MemoryMap {
         MemoryMap::default()
     }
 
-    pub fn load(&mut self, data: &[u8]) {
+    pub fn load(&mut self, data: &[u8], save: Option<Vec<u8>>) {
         self.bank.load(data);
         self.enable_saves = matches!(
             data.get(0x147).copied().unwrap_or(0),
             0x03 | 0x06 | 0x09 | 0x0D | 0x0F | 0x10 | 0x13 | 0x1B | 0x1E
         );
+        if let Some(save_data) = save {
+            self.bank.load_save(&save_data);
+        }
     }
     pub fn framebuffer(&self) -> &[u8] {
         &self.ppu.framebuffer()
@@ -169,5 +172,13 @@ impl MemoryMap {
 
     pub fn swap_samples(&mut self, out: &mut Vec<f32>) {
         self.apu.swap_samples(out);
+    }
+
+    pub fn dump_ext_ram(&self) -> Option<&[u8]> {
+        if self.enable_saves {
+            Some(self.bank.dump_ext_ram())
+        } else {
+            None
+        }
     }
 }
