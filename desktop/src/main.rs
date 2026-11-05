@@ -21,11 +21,11 @@ use sdl3::{
 };
 
 use crate::audio::EmulatorAudio;
-use crate::save::{create_save, show_save_error_dialog};
+use crate::save::{create_save, load_save, show_save_error_dialog};
 
 const RESOLUTION_X: u32 = 160;
 const RESOLUTION_Y: u32 = 144;
-const SCALE: u32 = 5;
+const SCALE: u32 = 1;
 const FRAME_M_CYCLES: u32 = 17_556;
 
 fn main() {
@@ -36,6 +36,7 @@ fn main() {
     }
     let mut rom = File::open(&args[1]).expect("Unable to open file");
     let name = get_game_name(&args[1]);
+    let rom_path = Path::new(&args[1]);
 
     let sdl_context = sdl3::init().unwrap();
 
@@ -64,7 +65,8 @@ fn main() {
     rom.read_to_end(&mut buffer).unwrap();
 
     let mut bus = MemoryMap::new();
-    bus.load(&buffer);
+
+    bus.load(&buffer, load_save(&rom_path));
     let mut cpu = Cpu::new(bus);
 
     let mut paused = false;
@@ -91,7 +93,7 @@ fn main() {
                     ..
                 } => {
                     let success = match cpu.dump_ext_ram() {
-                        Some(data) => create_save(data, &args[1]),
+                        Some(data) => create_save(data, &rom_path),
                         None => true,
                     };
                     if success || show_save_error_dialog(&canvas) {

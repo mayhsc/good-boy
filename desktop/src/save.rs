@@ -1,4 +1,7 @@
-use std::fs;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use sdl3::{
     messagebox::{
@@ -8,14 +11,18 @@ use sdl3::{
     video::Window,
 };
 
-pub fn create_save(data: &[u8], name: &String) -> bool {
-    if let Some(config_dir) = dirs::config_dir() {
-        let save_file_path = config_dir.join("Good Boy").join(name).with_extension("sav");
-        let res = fs::write(save_file_path, data);
-        res.is_ok()
-    } else {
-        false
-    }
+fn save_path(name: &Path) -> PathBuf {
+    name.with_extension("sav")
+}
+
+pub fn load_save(name: &Path) -> Option<Vec<u8>> {
+    let path = save_path(name);
+    fs::read(path).ok()
+}
+
+pub fn create_save(data: &[u8], name: &Path) -> bool {
+    let path = save_path(name);
+    fs::write(path, data).is_ok()
 }
 
 pub fn show_save_error_dialog(canvas: &Canvas<Window>) -> bool {

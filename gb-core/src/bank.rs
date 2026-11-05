@@ -63,6 +63,11 @@ impl Bank {
         self.reg_rom_lo = 1;
     }
 
+    pub fn load_save(&mut self, data: &[u8]) {
+        let len = self.ram.len().min(data.len());
+        self.ram[..len].copy_from_slice(&data[..len]);
+    }
+
     fn rom_bank_0(&self) -> usize {
         if self.mbc == MBC::MBC1 && self.mode1 {
             ((self.reg_hi as usize) << 5) % self.rom_bank_count
