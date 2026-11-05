@@ -1,5 +1,6 @@
 mod audio;
 mod display;
+mod palette;
 mod save;
 
 use std::fs::File;
@@ -20,6 +21,7 @@ use sdl3::{
 
 use crate::audio::EmulatorAudio;
 use crate::display::{create_canvas, draw_screen, to_rgba};
+use crate::palette::builtin_palettes;
 use crate::save::{create_save, load_save, show_save_error_dialog};
 
 const RESOLUTION_X: u32 = 160;
@@ -80,6 +82,8 @@ fn main() {
     }
 
     let mut rgba = vec![0u8; (RESOLUTION_X * RESOLUTION_Y * 4) as usize];
+    let mut selected_palette = 0;
+    let palettes = builtin_palettes();
 
     'gameloop: loop {
         canvas.set_draw_color(Color::RGB(0, 0, 0));
@@ -113,6 +117,12 @@ fn main() {
                     paused = !paused;
                 }
                 Event::KeyDown {
+                    keycode: Some(Keycode::C),
+                    repeat: false,
+                    ..
+                } => selected_palette = (selected_palette + 1) % palettes.len(),
+
+                Event::KeyDown {
                     keycode,
                     repeat: false,
                     ..
@@ -142,7 +152,12 @@ fn main() {
         device.put_data_f32(&samples).unwrap();
         samples.clear();
 
-        to_rgba(cpu.frame_buffer(), &mut rgba, cpu.drawn());
+        to_rgba(
+            cpu.frame_buffer(),
+            &mut rgba,
+            cpu.drawn(),
+            &palettes[selected_palette],
+        );
 
         draw_screen(&mut canvas, &mut texture, &rgba);
 
