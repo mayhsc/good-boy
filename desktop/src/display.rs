@@ -1,4 +1,4 @@
-use sdl3::{
+use egui_sdl3::sdl3::{
     VideoSubsystem,
     pixels::PixelFormat,
     render::Texture,
@@ -73,7 +73,7 @@ pub fn create_canvas(video_subsystem: &VideoSubsystem, name: &String) -> Canvas<
     canvas
 }
 
-pub fn draw_screen(canvas: &mut Canvas<Window>, texture: &mut Texture<'_>, rgba: &[u8]) {
+pub fn draw_screen(canvas: &mut Canvas<Window>, texture: &mut Texture, rgba: &[u8]) {
     assert_eq!(rgba.len(), (RESOLUTION_X * RESOLUTION_Y * 4) as usize);
     texture
         .update(None, rgba, (RESOLUTION_X * 4) as usize)

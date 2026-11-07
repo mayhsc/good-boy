@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use egui_sdl3::sdl3;
 use gb_core::joypad::Button;
 use sdl3::{
     event::Event,

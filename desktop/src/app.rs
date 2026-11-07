@@ -1,7 +1,7 @@
 
 use std::{path::Path, time::Duration};
 
-use sdl3::EventPump;
+use egui_sdl3::sdl3::{EventPump, Sdl};
 
 use crate::palette::{ColorPalette, builtin_palettes};
 use crate::{
@@ -24,7 +24,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(sdl: &sdl3::Sdl) -> Self {
+    pub fn new(sdl: Sdl) -> Self {
         let video = sdl.video().unwrap();
         let audio = sdl.audio().unwrap();
         Self {
