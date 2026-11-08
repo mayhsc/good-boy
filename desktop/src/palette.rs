@@ -25,7 +25,7 @@ pub fn builtin_palettes() -> Vec<ColorPalette> {
         ),
         ColorPalette::new(
             "Grayscale",
-            vec![hex(0xC8CCC8), hex(0xA0A4A0), hex(0x686C68), hex(0x303430)],
+            vec![hex(0xFFFFFF), hex(0xA0A4A0), hex(0x686C68), hex(0x000000)],
         ),
     ]
 }
