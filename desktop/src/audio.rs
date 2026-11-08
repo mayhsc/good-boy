@@ -1,23 +1,41 @@
-use std::collections::VecDeque;
+use egui_sdl3::sdl3::{
+    AudioSubsystem,
+    audio::{AudioDevice, AudioFormat, AudioSpec, AudioStreamOwner},
+};
 
-use sdl3::audio::{AudioCallback, AudioStream};
+use crate::session::Session;
 
-pub(crate) struct EmulatorAudio {
-    pub samples: VecDeque<f32>,
+pub struct AudioOutput {
+    stream: AudioStreamOwner,
+    scratch: Vec<f32>,
+    _device: AudioDevice,
 }
 
-impl AudioCallback<f32> for EmulatorAudio {
-    fn callback(
-        &mut self,
-        stream: &mut AudioStream,
-        requested: i32,
-    ) {
-        let mut output = vec![0.0f32; requested as usize];
+impl AudioOutput {
+    pub fn new(audio: &AudioSubsystem) -> Self {
+        let spec = AudioSpec::new(Some(44_100), Some(2), Some(AudioFormat::f32_sys()));
+        let device = audio.open_playback_device(&spec).unwrap();
+        let stream = audio
+            .new_playback_stream(&spec, None)
+            .unwrap_or_else(|e| panic!("Failed to create audio playback stream: {e:?}"));
 
-        for sample in output.iter_mut() {
-            *sample = self.samples.pop_front().unwrap_or(0.0);
+        device.bind_stream(&stream).unwrap();
+        stream.resume().unwrap();
+        
+        Self {
+            stream,
+            scratch: Vec::with_capacity(2048),
+            _device: device,
         }
+    }
 
-        stream.put_data_f32(&output).unwrap();
+    pub fn submit(&mut self, session: &mut Session) {
+        session.swap_samples(&mut self.scratch);
+        let _ = self.stream.put_data_f32(&self.scratch);
+        self.scratch.clear();
+    }
+
+    pub fn queued_bytes(&self) -> i32 {
+        self.stream.available_bytes().unwrap()
     }
 }

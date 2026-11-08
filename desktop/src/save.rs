@@ -3,6 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use egui_sdl3::sdl3;
 use sdl3::{
     messagebox::{
         ButtonData, ClickedButton, MessageBoxButtonFlag, MessageBoxFlag, show_message_box,
