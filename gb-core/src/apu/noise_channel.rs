@@ -29,7 +29,7 @@ impl NoiseChannel {
         match addr {
             0xFF20 => {
                 self.nr41 = v;
-                self.length_counter.on_trigger(64 - (v as u16 & 0x3F));
+                self.length_counter.load(64 - (v as u16 & 0x3F));
             }
             0xFF21 => {
                 self.nr42 = v;

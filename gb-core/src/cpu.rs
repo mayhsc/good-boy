@@ -40,10 +40,6 @@ impl<B: Bus> Cpu<B> {
     }
 
     pub fn step(&mut self) -> u32 {
-        // println!(
-        //     "PC={:04X} opcode={:02X} halted={}",
-        //     self.regs.pc, self.opcode, self.halted
-        // );
         self.m_cycles = 0;
         if self.halted {
             self.tick();

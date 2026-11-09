@@ -59,7 +59,7 @@ impl PulseChannel {
             }
             1 => {
                 self.nrx1 = v;
-                self.length.on_trigger(64 - (v as u16 & 0x3F));
+                self.length.load(64 - (v as u16 & 0x3F));
             }
             2 => {
                 self.nrx2 = v;
@@ -72,7 +72,7 @@ impl PulseChannel {
             4 => {
                 self.nrx4 = v;
                 self.length.set_enabled(v & 0x40 != 0);
-                
+
                 if v & 0x80 != 0 {
                     self.trigger();
                 }
