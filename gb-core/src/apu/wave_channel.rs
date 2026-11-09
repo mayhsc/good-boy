@@ -15,6 +15,7 @@ pub(super) struct WaveChannel {
     frequency_timer: u16,
     wave_position: usize,
     length_counter: LengthCounter,
+    pub skip_length: bool,
 }
 
 impl WaveChannel {
@@ -54,7 +55,9 @@ impl WaveChannel {
             0xFF1D => self.nr33 = v,
             0xFF1E => {
                 self.nr34 = v;
-                self.length_counter.set_enabled(v & 0x40 != 0);
+                if self.length_counter.set_enabled(v & 0x40 != 0) && !self.skip_length {
+                    self.clock_length();
+                }
 
                 if v & 0x80 != 0 {
                     self.trigger();

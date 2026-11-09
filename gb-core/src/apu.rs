@@ -95,6 +95,13 @@ impl Apu {
         let step = self.counter;
 
         self.counter = (self.counter + 1) % 8;
+        let skip_length = self.counter % 2 == 0;
+
+        self.pulse_channel1.skip_length = skip_length;
+        self.pulse_channel2.skip_length = skip_length;
+        self.wave_channel.skip_length = skip_length;
+        self.noise_channel.skip_length = skip_length;
+
         if step % 2 == 0 {
             self.pulse_channel1.clock_length();
             self.pulse_channel2.clock_length();

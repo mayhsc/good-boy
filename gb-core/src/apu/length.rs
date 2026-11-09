@@ -19,8 +19,10 @@ impl LengthCounter {
         }
     }
 
-    pub fn set_enabled(&mut self, enabled: bool) {
+    pub fn set_enabled(&mut self, enabled: bool) -> bool {
+        let was_not_enabled = !self.enabled;
         self.enabled = enabled;
+        was_not_enabled && enabled
     }
 
     pub fn load(&mut self, value: u16) {

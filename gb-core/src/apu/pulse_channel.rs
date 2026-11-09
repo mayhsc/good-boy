@@ -11,7 +11,7 @@ pub(super) struct PulseChannel {
 
     frequency_timer: u16,
     envelop: Envelope,
-    length: LengthCounter,
+    length_counter: LengthCounter,
     wave_duty_position: usize,
 
     // Sweep (Channel 1)
@@ -19,6 +19,7 @@ pub(super) struct PulseChannel {
     shadow_frequency: u16,
     sweep_timer: u8,
     negate_mode: bool,
+    pub skip_length: bool,
 }
 
 const WAVE_DUTY_TABLE: [[u8; 8]; 4] = [
@@ -59,7 +60,7 @@ impl PulseChannel {
             }
             1 => {
                 self.nrx1 = v;
-                self.length.load(64 - (v as u16 & 0x3F));
+                self.length_counter.load(64 - (v as u16 & 0x3F));
             }
             2 => {
                 self.nrx2 = v;
@@ -71,7 +72,9 @@ impl PulseChannel {
             3 => self.nrx3 = v,
             4 => {
                 self.nrx4 = v;
-                self.length.set_enabled(v & 0x40 != 0);
+                if self.length_counter.set_enabled(v & 0x40 != 0) && !self.skip_length {
+                    self.clock_length();
+                }
 
                 if v & 0x80 != 0 {
                     self.trigger();
@@ -96,7 +99,7 @@ impl PulseChannel {
 
         self.sweep_enabled = sweep_period != 0 || self.sweep_shift() != 0;
 
-        self.length.on_trigger(64);
+        self.length_counter.on_trigger(64);
 
         if self.sweep_shift() != 0 {
             self.calculate_shadow_frequency();
@@ -184,7 +187,7 @@ impl PulseChannel {
     }
 
     pub fn clock_length(&mut self) {
-        if self.length.clock() {
+        if self.length_counter.clock() {
             self.channel_on = false;
         }
     }
