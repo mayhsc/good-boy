@@ -93,7 +93,6 @@ impl Apu {
 
     pub fn tick_frame_sequencer(&mut self) {
         let step = self.counter;
-        println!("fs step={} power={}", step, self.power);
 
         self.counter = (self.counter + 1) % 8;
         if step % 2 == 0 {

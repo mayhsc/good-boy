@@ -43,6 +43,7 @@ impl NoiseChannel {
             0xFF22 => self.nr43 = v,
             0xFF23 => {
                 self.nr44 = v;
+                self.length_counter.set_enabled(v & 0x40 != 0);
 
                 if v & 0x80 != 0 {
                     self.trigger();

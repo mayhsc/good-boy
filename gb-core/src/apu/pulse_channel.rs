@@ -52,13 +52,10 @@ impl PulseChannel {
     pub fn write(&mut self, addr: u16, v: u8) {
         match addr {
             0 => {
-                print!("Old: {:x}, channel_on: {}\n", self.nrx0, self.channel_on);
                 self.nrx0 = v;
                 if self.sweep_increasing() && self.negate_mode {
                     self.channel_on = false;
-                    print!("Nrx0: {}\n", self.channel_on);
                 }
-                print!("New: {:x}, channel_on: {}\n", self.nrx0, self.channel_on);
             }
             1 => {
                 self.nrx1 = v;
@@ -67,7 +64,6 @@ impl PulseChannel {
             2 => {
                 self.nrx2 = v;
                 if !self.dac_enabled() {
-                    print!("Nrx2: {}\n", self.channel_on);
                     self.channel_on = false;
                 }
                 self.envelop.load_from_nrx2(self.nrx2);
@@ -75,7 +71,8 @@ impl PulseChannel {
             3 => self.nrx3 = v,
             4 => {
                 self.nrx4 = v;
-
+                self.length.set_enabled(v & 0x40 != 0);
+                
                 if v & 0x80 != 0 {
                     self.trigger();
                 }
@@ -87,7 +84,6 @@ impl PulseChannel {
     fn trigger(&mut self) {
         self.negate_mode = false;
         self.channel_on = self.dac_enabled();
-        print!("Trigger: {}\n", self.channel_on);
 
         self.envelop.trigger(self.nrx2);
 
@@ -102,7 +98,7 @@ impl PulseChannel {
 
         self.length.on_trigger(64);
 
-        if self.sweep_shift() != 0  {
+        if self.sweep_shift() != 0 {
             self.calculate_shadow_frequency();
         }
     }
@@ -174,7 +170,6 @@ impl PulseChannel {
 
         if new_frequency > 2047 {
             self.channel_on = false;
-            print!("Frequency: {}\n", self.channel_on);
         }
 
         new_frequency
@@ -191,7 +186,6 @@ impl PulseChannel {
     pub fn clock_length(&mut self) {
         if self.length.clock() {
             self.channel_on = false;
-            print!("Clock length: {}\n", self.channel_on);
         }
     }
 

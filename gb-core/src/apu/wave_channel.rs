@@ -54,6 +54,7 @@ impl WaveChannel {
             0xFF1D => self.nr33 = v,
             0xFF1E => {
                 self.nr34 = v;
+                self.length_counter.set_enabled(v & 0x40 != 0);
 
                 if v & 0x80 != 0 {
                     self.trigger();
