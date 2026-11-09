@@ -8,8 +8,8 @@ mod noise_channel;
 mod pulse_channel;
 mod wave_channel;
 
-const CPU_FREQUENCY: f64 = 4_194_304.0;
-const SAMPLE_RATE: f64 = 44_100.0;
+const CPU_FREQUENCY: u64 = 4_194_304;
+const SAMPLE_RATE: u64 = 44_100;
 const BUFFER_CAPACITY: usize = 8192;
 
 #[derive(Default)]
@@ -22,7 +22,7 @@ pub(crate) struct Apu {
     nr50: u8, nr51: u8,
     power: bool,
     counter: u8,
-    sample_counter: f64,
+    sample_counter: u64,
     samples: Vec<f32>,
 }
 
@@ -93,6 +93,8 @@ impl Apu {
 
     pub fn tick_frame_sequencer(&mut self) {
         let step = self.counter;
+        println!("fs step={} power={}", step, self.power);
+
         self.counter = (self.counter + 1) % 8;
         if step % 2 == 0 {
             self.pulse_channel1.clock_length();
