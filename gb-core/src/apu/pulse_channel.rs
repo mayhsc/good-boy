@@ -72,7 +72,7 @@ impl PulseChannel {
             3 => self.nrx3 = v,
             4 => {
                 self.nrx4 = v;
-                if self.length_counter.set_enabled(v & 0x40 != 0) && !self.skip_length {
+                if (self.length_counter.set_enabled(v & 0x40 != 0)) && !self.skip_length {
                     self.clock_length();
                 }
 
@@ -99,7 +99,11 @@ impl PulseChannel {
 
         self.sweep_enabled = sweep_period != 0 || self.sweep_shift() != 0;
 
+        let reloaded = self.length_counter.counter == 0;
         self.length_counter.on_trigger(64);
+        if reloaded && self.length_counter.enabled && !self.skip_length {
+            self.length_counter.counter -= 1;
+        }
 
         if self.sweep_shift() != 0 {
             self.calculate_shadow_frequency();

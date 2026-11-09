@@ -44,7 +44,7 @@ impl NoiseChannel {
             0xFF22 => self.nr43 = v,
             0xFF23 => {
                 self.nr44 = v;
-                if self.length_counter.set_enabled(v & 0x40 != 0) && !self.skip_length{
+                if self.length_counter.set_enabled(v & 0x40 != 0) && !self.skip_length {
                     self.clock_length();
                 }
 
@@ -65,7 +65,11 @@ impl NoiseChannel {
 
         self.frequency_timer = self.noise_divisor() << self.clock_shift();
 
+        let reloaded = self.length_counter.counter == 0;
         self.length_counter.on_trigger(64);
+        if reloaded && self.length_counter.enabled && !self.skip_length {
+            self.length_counter.counter -= 1;
+        }
     }
 
     pub fn tick(&mut self) {

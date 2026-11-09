@@ -77,7 +77,11 @@ impl WaveChannel {
 
         self.frequency_timer = (2048 - self.frequency()) * 2;
 
+        let reloaded = self.length_counter.counter == 0;
         self.length_counter.on_trigger(256);
+        if reloaded && self.length_counter.enabled && !self.skip_length {
+            self.length_counter.counter -= 1;
+        }
     }
 
     pub fn tick(&mut self) {
