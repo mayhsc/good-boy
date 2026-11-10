@@ -5,6 +5,7 @@ mod ppu;
 pub mod joypad;
 mod apu;
 mod bank;
+mod serial_port;
 
 #[cfg(test)]
 mod tests;
