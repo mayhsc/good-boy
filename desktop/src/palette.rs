@@ -4,6 +4,15 @@ pub struct ColorPalette {
     pub colors: Vec<[u8; 4]>,
 }
 
+impl Default for ColorPalette {
+    fn default() -> Self {
+        Self {
+            name: "Sunset".to_owned(),
+            colors: vec![hex(0xFFF6D3), hex(0xF9A875), hex(0xEBCB6F), hex(0x7C3F58)],
+        }
+    }
+}
+
 impl ColorPalette {
     pub fn new(name: impl Into<String>, colors: Vec<[u8; 4]>) -> Self {
         Self {

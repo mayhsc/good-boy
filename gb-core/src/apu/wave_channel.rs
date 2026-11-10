@@ -56,7 +56,6 @@ impl WaveChannel {
             0xFF1B => {
                 self.nr31 = v;
                 self.length_counter.load(256 - v as u16);
-                println!("  load ch -> {}", self.length_counter.counter);
             }
             0xFF1C => self.nr32 = v,
             0xFF1D => self.nr33 = v,

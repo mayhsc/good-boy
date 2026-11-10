@@ -12,7 +12,8 @@ pub enum Action {
     TogglePause,
     NextPalette,
     DumpVram,
-    OpenRom(PathBuf), 
+    OpenSettings,
+    OpenRom(PathBuf),
     Button(Button, bool),
 }
 
@@ -31,6 +32,9 @@ pub fn translate(event: Event) -> Option<Action> {
             Keycode::C if !repeat => Some(Action::NextPalette),
             Keycode::K if keymod.intersects(Mod::LCTRLMOD | Mod::RCTRLMOD) => {
                 Some(Action::DumpVram)
+            }
+            Keycode::Comma if keymod.intersects(Mod::LCTRLMOD | Mod::RCTRLMOD) => {
+                Some(Action::OpenSettings)
             }
             _ if repeat => None,
             _ => key_to_button(k).map(|b| Action::Button(b, true)),

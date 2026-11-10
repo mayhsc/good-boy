@@ -66,8 +66,6 @@ impl Apu {
     }
 
     pub fn write(&mut self, addr: u16, v: u8) {
-        println!("write {addr:#06x} <- {v:#04x}  power={}", self.power);
-
         match addr {
             0xFF26 => {
                 let on = v & 0x80 != 0;

@@ -61,7 +61,6 @@ impl PulseChannel {
             1 => {
                 self.nrx1 = v;
                 self.length_counter.load(64 - (v as u16 & 0x3F));
-                println!("  load ch -> {}", self.length_counter.counter);
             }
             2 => {
                 self.nrx2 = v;
