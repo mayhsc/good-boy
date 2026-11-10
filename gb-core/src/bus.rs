@@ -4,7 +4,7 @@ use crate::{
     bank::Bank,
     joypad::{Button, Joypad},
     ppu::Ppu,
-    serial_port::SerialPort,
+    serial::SerialPort,
     timer::Timer,
 };
 
