@@ -31,6 +31,7 @@ impl NoiseChannel {
             0xFF20 => {
                 self.nr41 = v;
                 self.length_counter.load(64 - (v as u16 & 0x3F));
+                println!("  load ch -> {}", self.length_counter.counter);
             }
             0xFF21 => {
                 self.nr42 = v;
@@ -125,5 +126,15 @@ impl NoiseChannel {
         let dac_input = ((!self.lfsr & 1) as u8) * self.envelop.volume;
 
         (dac_input as f32 / 7.5) - 1.0
+    }
+    
+    pub fn load_length_only(&mut self, v: u8) {
+        self.length_counter.load(64 - (v as u16 & 0x3F));
+    }
+
+    pub fn power_off(&mut self) {
+        let counter = self.length_counter.counter;
+        *self = NoiseChannel::default();
+        self.length_counter.load(counter);
     }
 }

@@ -16,6 +16,8 @@ pub(super) struct WaveChannel {
     wave_position: usize,
     length_counter: LengthCounter,
     pub skip_length: bool,
+
+    pub power: bool,
 }
 
 impl WaveChannel {
@@ -40,6 +42,10 @@ impl WaveChannel {
 
     pub fn write(&mut self, addr: u16, v: u8) {
         match addr {
+            0xFF30..=0xFF3F => {
+                self.wave_ram[(addr - 0xFF30) as usize] = v;
+            }
+            _ if !self.power => {}
             0xFF1A => {
                 self.nr30 = v;
 
@@ -50,6 +56,7 @@ impl WaveChannel {
             0xFF1B => {
                 self.nr31 = v;
                 self.length_counter.load(256 - v as u16);
+                println!("  load ch -> {}", self.length_counter.counter);
             }
             0xFF1C => self.nr32 = v,
             0xFF1D => self.nr33 = v,
@@ -62,9 +69,6 @@ impl WaveChannel {
                 if v & 0x80 != 0 {
                     self.trigger();
                 }
-            }
-            0xFF30..=0xFF3F => {
-                self.wave_ram[(addr - 0xFF30) as usize] = v;
             }
             _ => unreachable!(),
         }
@@ -142,5 +146,15 @@ impl WaveChannel {
         };
 
         (dac_input as f32 / 7.5) - 1.0
+    }
+
+    pub fn load_length_only(&mut self, v: u8) {
+        self.length_counter.load(256 - v as u16);
+    }
+
+    pub fn power_off(&mut self) {
+        let counter = self.length_counter.counter;
+        *self = WaveChannel::reset(&self);
+        self.length_counter.load(counter);
     }
 }

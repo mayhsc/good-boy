@@ -66,20 +66,31 @@ impl Apu {
     }
 
     pub fn write(&mut self, addr: u16, v: u8) {
+        println!("write {addr:#06x} <- {v:#04x}  power={}", self.power);
+
         match addr {
             0xFF26 => {
                 let on = v & 0x80 != 0;
                 if self.power && !on {
-                    *self = Apu {
-                        wave_channel: self.wave_channel.reset(),
-                        ..Default::default()
-                    };
+                    self.pulse_channel1.power_off();
+                    self.pulse_channel2.power_off();
+                    self.wave_channel.power_off();
+                    self.noise_channel.power_off();
+                    self.nr50 = 0;
+                    self.nr51 = 0;
+                    self.counter = 0;
                 } else if !self.power && on {
                     self.counter = 0
                 }
                 self.power = on;
+                self.wave_channel.power = on;
             }
             0xFF30..=0xFF3F => self.wave_channel.write(addr, v),
+            0xFF11 if !self.power => self.pulse_channel1.load_length_only(v),
+            0xFF16 if !self.power => self.pulse_channel2.load_length_only(v),
+            0xFF1B if !self.power => self.wave_channel.load_length_only(v),
+            0xFF20 if !self.power => self.noise_channel.load_length_only(v),
+
             _ if !self.power => {}
             0xFF10..=0xFF14 => self.pulse_channel1.write(addr - 0xFF10, v),
             0xFF16..=0xFF19 => self.pulse_channel2.write(addr - 0xFF15, v),
@@ -92,6 +103,10 @@ impl Apu {
     }
 
     pub fn tick_frame_sequencer(&mut self) {
+        if !self.power {
+            return;
+        }
+
         let step = self.counter;
 
         self.counter = (self.counter + 1) % 8;

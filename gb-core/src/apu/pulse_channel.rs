@@ -61,6 +61,7 @@ impl PulseChannel {
             1 => {
                 self.nrx1 = v;
                 self.length_counter.load(64 - (v as u16 & 0x3F));
+                println!("  load ch -> {}", self.length_counter.counter);
             }
             2 => {
                 self.nrx2 = v;
@@ -216,5 +217,15 @@ impl PulseChannel {
         let dac_input = self.duty_cycle_amplitude() as f32 * self.envelop.volume as f32;
 
         (dac_input / 7.5) - 1.0
+    }
+
+    pub fn load_length_only(&mut self, v: u8) {
+        self.length_counter.load(64 - (v as u16 & 0x3F));
+    }
+
+    pub fn power_off(&mut self) {
+        let counter = self.length_counter.counter;
+        *self = PulseChannel::default();
+        self.length_counter.load(counter);
     }
 }
