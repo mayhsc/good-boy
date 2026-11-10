@@ -190,17 +190,16 @@ impl Screen {
         draw_screen(&mut self.egui.painter.canvas, &mut texture, &self.rgba);
 
         let mut action = UiAction::None;
-
-        if *settings_open {
-            let theme = &self.theme;
-            let dirty = &mut self.theme_dirty;
-            self.egui.run(|ctx| {
-                if std::mem::replace(dirty, false) {
-                    theme.apply(ctx);
-                }
+        let theme = &self.theme;
+        let dirty = &mut self.theme_dirty;
+        self.egui.run(|ctx| {
+            if std::mem::replace(dirty, false) {
+                theme.apply(ctx);
+            }
+            if *settings_open {
                 settings_window(ctx, settings_open, view, theme, &mut action);
-            });
-        }
+            }
+        });
         self.egui.paint();
         self.egui.present();
         action
