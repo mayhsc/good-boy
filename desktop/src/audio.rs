@@ -21,7 +21,7 @@ impl AudioOutput {
 
         device.bind_stream(&stream).unwrap();
         stream.resume().unwrap();
-        
+
         Self {
             stream,
             scratch: Vec::with_capacity(2048),

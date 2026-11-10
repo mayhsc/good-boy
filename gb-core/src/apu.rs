@@ -8,8 +8,8 @@ mod noise_channel;
 mod pulse_channel;
 mod wave_channel;
 
-const CPU_FREQUENCY: f64 = 4_194_304.0;
-const SAMPLE_RATE: f64 = 44_100.0;
+const CPU_FREQUENCY: u64 = 4_194_304;
+const SAMPLE_RATE: u64 = 44_100;
 const BUFFER_CAPACITY: usize = 8192;
 
 #[derive(Default)]
@@ -22,7 +22,7 @@ pub(crate) struct Apu {
     nr50: u8, nr51: u8,
     power: bool,
     counter: u8,
-    sample_counter: f64,
+    sample_counter: u64,
     samples: Vec<f32>,
 }
 
@@ -70,16 +70,25 @@ impl Apu {
             0xFF26 => {
                 let on = v & 0x80 != 0;
                 if self.power && !on {
-                    *self = Apu {
-                        wave_channel: self.wave_channel.reset(),
-                        ..Default::default()
-                    };
+                    self.pulse_channel1.power_off();
+                    self.pulse_channel2.power_off();
+                    self.wave_channel.power_off();
+                    self.noise_channel.power_off();
+                    self.nr50 = 0;
+                    self.nr51 = 0;
+                    self.counter = 0;
                 } else if !self.power && on {
                     self.counter = 0
                 }
                 self.power = on;
+                self.wave_channel.power = on;
             }
             0xFF30..=0xFF3F => self.wave_channel.write(addr, v),
+            0xFF11 if !self.power => self.pulse_channel1.load_length_only(v),
+            0xFF16 if !self.power => self.pulse_channel2.load_length_only(v),
+            0xFF1B if !self.power => self.wave_channel.load_length_only(v),
+            0xFF20 if !self.power => self.noise_channel.load_length_only(v),
+
             _ if !self.power => {}
             0xFF10..=0xFF14 => self.pulse_channel1.write(addr - 0xFF10, v),
             0xFF16..=0xFF19 => self.pulse_channel2.write(addr - 0xFF15, v),
@@ -92,8 +101,20 @@ impl Apu {
     }
 
     pub fn tick_frame_sequencer(&mut self) {
+        if !self.power {
+            return;
+        }
+
         let step = self.counter;
+
         self.counter = (self.counter + 1) % 8;
+        let skip_length = self.counter % 2 == 0;
+
+        self.pulse_channel1.skip_length = skip_length;
+        self.pulse_channel2.skip_length = skip_length;
+        self.wave_channel.skip_length = skip_length;
+        self.noise_channel.skip_length = skip_length;
+
         if step % 2 == 0 {
             self.pulse_channel1.clock_length();
             self.pulse_channel2.clock_length();

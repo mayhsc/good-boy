@@ -30,6 +30,7 @@ impl Timer {
     }
 
     pub fn tick(&mut self) -> TimerEvents {
+
         let mut ev = TimerEvents::default();
         let old_signal = signal(self.div, self.tac);
         let old_bit = (self.div >> 12) & 1;

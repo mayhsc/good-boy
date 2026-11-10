@@ -17,7 +17,7 @@ pub struct Session {
 
 impl Session {
     pub fn load(path: &Path) -> io::Result<Self> {
-        let rom = std::fs::read(path)?; 
+        let rom = std::fs::read(path)?;
         let mut bus = MemoryMap::new();
         bus.load(&rom, load_save(path));
         Ok(Self {

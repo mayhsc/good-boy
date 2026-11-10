@@ -254,6 +254,9 @@ impl Ppu {
         }
         self.dot += 1;
         if self.dot == 456 {
+            if self.window_active {
+                self.wly += 1;
+            }
             self.dot = 0;
             self.ly += 1;
 
@@ -323,6 +326,7 @@ impl Ppu {
         self.fetcher = FetcherState::new();
         self.oam_fifo.clear();
         self.oam_fifo.extend(std::iter::repeat(TRANSPARENT).take(8));
+        self.window_active = false;
     }
 
     fn oam_scan(&mut self) {

@@ -11,13 +11,15 @@ pub(super) struct PulseChannel {
 
     frequency_timer: u16,
     envelop: Envelope,
-    length: LengthCounter,
+    length_counter: LengthCounter,
     wave_duty_position: usize,
 
     // Sweep (Channel 1)
     sweep_enabled: bool,
     shadow_frequency: u16,
     sweep_timer: u8,
+    negate_mode: bool,
+    pub skip_length: bool,
 }
 
 const WAVE_DUTY_TABLE: [[u8; 8]; 4] = [
@@ -50,10 +52,15 @@ impl PulseChannel {
 
     pub fn write(&mut self, addr: u16, v: u8) {
         match addr {
-            0 => self.nrx0 = v,
+            0 => {
+                self.nrx0 = v;
+                if self.sweep_increasing() && self.negate_mode {
+                    self.channel_on = false;
+                }
+            }
             1 => {
                 self.nrx1 = v;
-                self.length.on_trigger(64 - (v as u16 & 0x3F));
+                self.length_counter.load(64 - (v as u16 & 0x3F));
             }
             2 => {
                 self.nrx2 = v;
@@ -65,6 +72,9 @@ impl PulseChannel {
             3 => self.nrx3 = v,
             4 => {
                 self.nrx4 = v;
+                if (self.length_counter.set_enabled(v & 0x40 != 0)) && !self.skip_length {
+                    self.clock_length();
+                }
 
                 if v & 0x80 != 0 {
                     self.trigger();
@@ -75,6 +85,7 @@ impl PulseChannel {
     }
 
     fn trigger(&mut self) {
+        self.negate_mode = false;
         self.channel_on = self.dac_enabled();
 
         self.envelop.trigger(self.nrx2);
@@ -88,7 +99,11 @@ impl PulseChannel {
 
         self.sweep_enabled = sweep_period != 0 || self.sweep_shift() != 0;
 
-        self.length.on_trigger(64);
+        let reloaded = self.length_counter.counter == 0;
+        self.length_counter.on_trigger(64);
+        if reloaded && self.length_counter.enabled && !self.skip_length {
+            self.length_counter.counter -= 1;
+        }
 
         if self.sweep_shift() != 0 {
             self.calculate_shadow_frequency();
@@ -130,19 +145,15 @@ impl PulseChannel {
 
         let period = self.sweep_period();
 
-        self.sweep_timer = if period == 0 { 8 } else { period };
+        self.sweep_timer = if period > 0 { period } else { 8 };
 
         if !self.sweep_enabled || period == 0 {
             return;
         }
 
-        if self.sweep_shift() == 0 {
-            return;
-        }
-
         let new_frequency = self.calculate_shadow_frequency();
 
-        if new_frequency <= 2047 && self.channel_on {
+        if new_frequency <= 2047 && self.sweep_shift() != 0 {
             self.shadow_frequency = new_frequency;
             self.set_frequency(new_frequency);
 
@@ -160,6 +171,7 @@ impl PulseChannel {
         let new_frequency = if self.sweep_increasing() {
             self.shadow_frequency.saturating_add(delta)
         } else {
+            self.negate_mode = true;
             self.shadow_frequency.saturating_sub(delta)
         };
 
@@ -175,11 +187,11 @@ impl PulseChannel {
     }
 
     fn sweep_increasing(&self) -> bool {
-        (self.nrx0 >> 3) & 0x01 == 1
+        (self.nrx0 >> 3) & 0x01 == 0
     }
 
     pub fn clock_length(&mut self) {
-        if self.length.clock() {
+        if self.length_counter.clock() {
             self.channel_on = false;
         }
     }
@@ -204,5 +216,15 @@ impl PulseChannel {
         let dac_input = self.duty_cycle_amplitude() as f32 * self.envelop.volume as f32;
 
         (dac_input / 7.5) - 1.0
+    }
+
+    pub fn load_length_only(&mut self, v: u8) {
+        self.length_counter.load(64 - (v as u16 & 0x3F));
+    }
+
+    pub fn power_off(&mut self) {
+        let counter = self.length_counter.counter;
+        *self = PulseChannel::default();
+        self.length_counter.load(counter);
     }
 }

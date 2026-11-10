@@ -12,6 +12,7 @@ pub(super) struct NoiseChannel {
     lfsr: u16,
     envelop: Envelope,
     length_counter: LengthCounter,
+    pub skip_length: bool,
 }
 
 impl NoiseChannel {
@@ -29,7 +30,7 @@ impl NoiseChannel {
         match addr {
             0xFF20 => {
                 self.nr41 = v;
-                self.length_counter.on_trigger(64 - (v as u16 & 0x3F));
+                self.length_counter.load(64 - (v as u16 & 0x3F));
             }
             0xFF21 => {
                 self.nr42 = v;
@@ -43,6 +44,9 @@ impl NoiseChannel {
             0xFF22 => self.nr43 = v,
             0xFF23 => {
                 self.nr44 = v;
+                if self.length_counter.set_enabled(v & 0x40 != 0) && !self.skip_length {
+                    self.clock_length();
+                }
 
                 if v & 0x80 != 0 {
                     self.trigger();
@@ -61,7 +65,11 @@ impl NoiseChannel {
 
         self.frequency_timer = self.noise_divisor() << self.clock_shift();
 
+        let reloaded = self.length_counter.counter == 0;
         self.length_counter.on_trigger(64);
+        if reloaded && self.length_counter.enabled && !self.skip_length {
+            self.length_counter.counter -= 1;
+        }
     }
 
     pub fn tick(&mut self) {
@@ -117,5 +125,15 @@ impl NoiseChannel {
         let dac_input = ((!self.lfsr & 1) as u8) * self.envelop.volume;
 
         (dac_input as f32 / 7.5) - 1.0
+    }
+
+    pub fn load_length_only(&mut self, v: u8) {
+        self.length_counter.load(64 - (v as u16 & 0x3F));
+    }
+
+    pub fn power_off(&mut self) {
+        let counter = self.length_counter.counter;
+        *self = NoiseChannel::default();
+        self.length_counter.load(counter);
     }
 }
