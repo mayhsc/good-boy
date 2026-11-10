@@ -6,10 +6,7 @@ pub struct ColorPalette {
 
 impl Default for ColorPalette {
     fn default() -> Self {
-        Self {
-            name: "Sunset".to_owned(),
-            colors: vec![hex(0xFFF6D3), hex(0xF9A875), hex(0xEBCB6F), hex(0x7C3F58)],
-        }
+        builtin_palettes()[0].clone()
     }
 }
 
@@ -29,12 +26,20 @@ const fn hex(hex: u32) -> [u8; 4] {
 pub fn builtin_palettes() -> Vec<ColorPalette> {
     vec![
         ColorPalette::new(
-            "Sunset",
+            "Grayscale",
+            vec![hex(0xFFFFFF), hex(0xA0A4A0), hex(0x686C68), hex(0x000000)],
+        ),
+        ColorPalette::new(
+            "ICE CREAM GB",
             vec![hex(0xFFF6D3), hex(0xF9A875), hex(0xEBCB6F), hex(0x7C3F58)],
         ),
         ColorPalette::new(
-            "Grayscale",
-            vec![hex(0xFFFFFF), hex(0xA0A4A0), hex(0x686C68), hex(0x000000)],
+            "VELVET CHERRY GB PALETTE",
+            vec![hex(0x2d162c), hex(0x412752), hex(0x683a68), hex(0x9775a6)],
+        ),
+        ColorPalette::new(
+            "NYMPH GB PALETTE",
+            vec![hex(0x2c2137), hex(0x446176), hex(0x3fac95), hex(0xa1ef8c)],
         ),
     ]
 }
