@@ -2,10 +2,10 @@ mod app;
 mod audio;
 mod display;
 mod input;
+mod network;
 mod palette;
 mod save;
 mod session;
-mod network;
 
 use std::env;
 use std::path::Path;

@@ -2,9 +2,10 @@ use std::{path::Path, time::Duration};
 
 use egui_sdl3::sdl3::keyboard::Scancode::P;
 use egui_sdl3::sdl3::{EventPump, Sdl};
+use gb_core::serial::link::TcpLink;
 
 use crate::display::{SettingsView, UiAction};
-use crate::network::Network;
+use crate::network::{host, join};
 use crate::palette::{ColorPalette, builtin_palettes};
 use crate::{
     audio::AudioOutput,
@@ -25,7 +26,7 @@ pub struct App {
     paused: bool,
     recent: Vec<std::path::PathBuf>,
     settings_open: bool,
-    network: Option<Network>
+    network: Option<TcpLink>
 }
 
 impl App {
@@ -34,7 +35,9 @@ impl App {
         let audio = sdl.audio().unwrap();
         let network = match port {
             Some(n) => {
-                Some(Network::new(n))
+                // Add error handling
+                let link =  join(n);
+                Some(link.unwrap())
             }
             None => None
         };
@@ -82,6 +85,18 @@ impl App {
             Action::Button(b, down) => {
                 if let Some(s) = &mut self.session {
                     s.press(b, down)
+                }
+            }
+            Action::StartHost => {
+                match &mut self.network {
+                    Some(_) => {
+                        println!("Host already active");
+                    },
+                    None => {
+                        // Error handling
+                        let link = host().unwrap();
+                        self.network = Some(link)
+                    }
                 }
             }
         }
@@ -157,7 +172,7 @@ impl App {
 
     pub fn open_rom(&mut self, path: &Path) {
         self.try_save();
-        if let Ok(s) = Session::load(path) {
+        if let Ok(s) = Session::load(path, &mut self.network) {
             self.screen.set_title(&s.title());
             self.recent.retain(|recent| recent != path);
             self.recent.insert(0, path.to_owned());
@@ -170,7 +185,4 @@ impl App {
         self.session.as_ref().is_none_or(Session::save)
     }
 
-    fn establish_connection(&self) {
-
-    }
 }

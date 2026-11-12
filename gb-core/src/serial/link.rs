@@ -19,6 +19,12 @@ pub struct TcpLink {
 }
 
 impl TcpLink {
+    pub fn new(stream: TcpStream) -> Self {
+        Self { stream, connected: true }
+    }
+}
+
+impl SerialLink for TcpLink {
     fn is_connected(&self) -> bool {
         self.connected
     }

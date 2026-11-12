@@ -15,6 +15,7 @@ pub enum Action {
     OpenSettings,
     OpenRom(PathBuf),
     Button(Button, bool),
+    StartHost,
 }
 
 pub fn translate(event: Event) -> Option<Action> {
@@ -27,6 +28,7 @@ pub fn translate(event: Event) -> Option<Action> {
             repeat,
             ..
         } => match k {
+            Keycode::H => Some(Action::StartHost),
             Keycode::Escape => Some(Action::Quit),
             Keycode::P if !repeat => Some(Action::TogglePause),
             Keycode::C if !repeat => Some(Action::NextPalette),

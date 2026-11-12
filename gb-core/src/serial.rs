@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::serial::link::{SerialLink};
 
-mod link;
+pub mod link;
 
 const BYTE_CYCLES: u32 = 4096;
 

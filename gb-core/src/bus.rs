@@ -1,11 +1,5 @@
 use crate::{
-    IF_ADDR,
-    apu::Apu,
-    bank::Bank,
-    joypad::{Button, Joypad},
-    ppu::Ppu,
-    serial::SerialPort,
-    timer::Timer,
+    IF_ADDR, apu::Apu, bank::Bank, joypad::{Button, Joypad}, ppu::Ppu, serial::{SerialPort, link::SerialLink}, timer::Timer,
 };
 
 pub trait Bus {
@@ -186,5 +180,9 @@ impl MemoryMap {
         } else {
             None
         }
+    }
+
+    pub fn set_link(&mut self, link: Option<Box<dyn SerialLink>>) {
+        self.serial_port.set_link(link);
     }
 }
