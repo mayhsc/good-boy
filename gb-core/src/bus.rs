@@ -120,6 +120,7 @@ impl Bus for MemoryMap {
         for _ in 0..t_cycles {
             let ev = self.timer.tick();
             self.apu.tick_frequency_timer();
+            self.serial_port.tick();
             if ev.interrupt {
                 let f = self.read(IF_ADDR) | (1 << 2);
                 self.write(IF_ADDR, f);
