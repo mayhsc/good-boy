@@ -1,6 +1,6 @@
 use std::{path::Path, time::Duration};
 
-use egui_sdl3::sdl3::{EventPump, Sdl};
+use egui_sdl3::sdl3::{self, EventPump, Sdl};
 
 use crate::display::{SettingsView, UiAction};
 use crate::palette::{ColorPalette, builtin_palettes};
