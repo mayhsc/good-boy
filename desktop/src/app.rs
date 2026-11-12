@@ -1,8 +1,10 @@
 use std::{path::Path, time::Duration};
 
-use egui_sdl3::sdl3::{self, EventPump, Sdl};
+use egui_sdl3::sdl3::keyboard::Scancode::P;
+use egui_sdl3::sdl3::{EventPump, Sdl};
 
 use crate::display::{SettingsView, UiAction};
+use crate::network::Network;
 use crate::palette::{ColorPalette, builtin_palettes};
 use crate::{
     audio::AudioOutput,
@@ -23,12 +25,20 @@ pub struct App {
     paused: bool,
     recent: Vec<std::path::PathBuf>,
     settings_open: bool,
+    network: Option<Network>
 }
 
 impl App {
-    pub fn new(sdl: Sdl) -> Self {
+    pub fn new(sdl: Sdl, port: Option<u16>) -> Self {
         let video = sdl.video().unwrap();
         let audio = sdl.audio().unwrap();
+        let network = match port {
+            Some(n) => {
+                Some(Network::new(n))
+            }
+            None => None
+        };
+
         Self {
             events: sdl.event_pump().unwrap(),
             screen: Screen::new(&video, "Good Boy"),
@@ -39,6 +49,7 @@ impl App {
             paused: false,
             recent: Vec::new(),
             settings_open: false,
+            network: network
         }
     }
 
@@ -157,5 +168,9 @@ impl App {
 
     fn try_save(&self) -> bool {
         self.session.as_ref().is_none_or(Session::save)
+    }
+
+    fn establish_connection(&self) {
+
     }
 }
