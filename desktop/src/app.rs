@@ -29,6 +29,9 @@ pub struct App {
     settings_open: bool,
     pending: Option<Receiver<io::Result<TcpLink>>>,
     network_status: String,
+    network_host: String,
+    network_port: String,
+    host_port: Option<u16>,
 }
 
 impl App {
@@ -52,6 +55,9 @@ impl App {
             settings_open: false,
             pending: pending,
             network_status: "".to_owned(),
+            network_host: "127.0.0.1".to_owned(),
+            network_port: port.map_or_else(|| "".to_owned(), |port| port.to_string()),
+            host_port: None,
         }
     }
 
@@ -86,15 +92,28 @@ impl App {
                     s.press(b, down)
                 }
             }
-            Action::StartHost => {
-                match &mut self.pending {
-                    Some(_) => {
-                        println!("Host already active");
+            Action::StartHost => match &mut self.pending {
+                Some(_) => {
+                    println!("Host already active");
+                }
+                None => match start_host() {
+                    Ok((port, receiver)) => {
+                        self.host_port = Some(port);
+                        self.network_status = "Waiting for another player...".to_owned();
+                        self.pending = Some(receiver);
                     }
-                    None => {
-                        // Error handling
-                        self.pending = Some(start_host(7777));
+                    Err(error) => {
+                        self.network_status = format!("Could not host: {error}");
                     }
+                },
+            },
+            Action::JoinHost(address) => {
+                if self.pending.is_some() {
+                    self.network_status = "A connection is already in progress".to_owned();
+                } else {
+                    self.host_port = None;
+                    self.network_status = format!("Connecting to {address}...");
+                    self.pending = Some(start_join(address));
                 }
             }
         }
@@ -111,12 +130,16 @@ impl App {
         // No game loaded: show the home screen.
         if self.session.is_none() {
             let action = {
-                let view = SettingsView {
+                let mut view = SettingsView {
                     palettes: &self.palettes,
                     selected: self.palette,
+                    network_host: &mut self.network_host,
+                    network_port: &mut self.network_port,
+                    network_status: &self.network_status,
+                    host_port: self.host_port,
                 };
                 self.screen
-                    .home(&self.recent, &mut self.settings_open, &view)
+                    .home(&self.recent, &mut self.settings_open, &mut view)
             };
             self.handle_ui_action(action);
             return;
@@ -137,15 +160,19 @@ impl App {
         }
 
         let action = {
-            let view = SettingsView {
+            let mut view = SettingsView {
                 palettes: &self.palettes,
                 selected: self.palette,
+                network_host: &mut self.network_host,
+                network_port: &mut self.network_port,
+                network_status: &self.network_status,
+                host_port: self.host_port,
             };
             self.screen.draw(
                 self.session.as_ref().unwrap(),
                 &self.palettes[self.palette],
                 &mut self.settings_open,
-                &view,
+                &mut view,
             )
         };
         self.handle_ui_action(action);
@@ -166,6 +193,12 @@ impl App {
             UiAction::ChooseDefaultDirectory => {
                 println!("Choose default ROM directory requested")
             }
+            UiAction::StartHost => {
+                let _ = self.handle(Action::StartHost);
+            }
+            UiAction::JoinHost(address) => {
+                let _ = self.handle(Action::JoinHost(address));
+            }
             UiAction::_OpenSettings | UiAction::None => {}
         }
     }
@@ -176,6 +209,7 @@ impl App {
                 Ok(Ok(link)) => {
                     self.attach_link(link);
                     self.pending = None;
+                    self.network_status = "Connected".to_owned();
                 }
                 Ok(Err(e)) => {
                     self.network_status = format!("Link failed: {e}");

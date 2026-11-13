@@ -112,11 +112,17 @@ pub enum UiAction {
     _OpenSettings,
     ChoosePalette(usize),
     ChooseDefaultDirectory,
+    StartHost,
+    JoinHost(String),
 }
 
 pub struct SettingsView<'a> {
     pub palettes: &'a [ColorPalette],
     pub selected: usize,
+    pub network_host: &'a mut String,
+    pub network_port: &'a mut String,
+    pub network_status: &'a str,
+    pub host_port: Option<u16>,
 }
 
 pub struct Screen {
@@ -172,7 +178,7 @@ impl Screen {
         session: &Session,
         palette: &ColorPalette,
         settings_open: &mut bool,
-        view: &SettingsView,
+        view: &mut SettingsView,
     ) -> UiAction {
         self.sync_theme(view);
 
@@ -210,7 +216,7 @@ impl Screen {
         &mut self,
         recent: &[PathBuf],
         settings_open: &mut bool,
-        view: &SettingsView,
+        view: &mut SettingsView,
     ) -> UiAction {
         self.sync_theme(view);
 
@@ -346,7 +352,7 @@ fn swatches(ui: &mut egui::Ui, colors: &[[u8; 4]], size: f32) {
 fn settings_window(
     ctx: &egui::Context,
     open: &mut bool,
-    view: &SettingsView,
+    view: &mut SettingsView,
     theme: &Theme,
     action: &mut UiAction,
 ) {
@@ -402,6 +408,48 @@ fn settings_window(
             ui.label(RichText::new("ROM FOLDER").small().color(theme.dim));
             if ui.button("Choose folder…").clicked() {
                 *action = UiAction::ChooseDefaultDirectory;
+            }
+
+            ui.add_space(8.0);
+            ui.separator();
+            ui.label(RichText::new("TCP LINK CABLE").small().color(theme.dim));
+
+            if let Some(port) = view.host_port {
+                ui.label(format!("Hosting on port {port}"));
+                ui.label(
+                    RichText::new("Share this port with the other player.")
+                        .small()
+                        .color(theme.dim),
+                );
+            } else {
+                ui.horizontal(|ui| {
+                    ui.label("Host");
+                    ui.add(egui::TextEdit::singleline(view.network_host).desired_width(185.0));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Port");
+                    ui.add(egui::TextEdit::singleline(view.network_port).desired_width(80.0));
+                });
+                ui.horizontal(|ui| {
+                    if ui.button("Host game").clicked() {
+                        *action = UiAction::StartHost;
+                    }
+                    if ui.button("Join game").clicked() {
+                        match view.network_port.trim().parse::<u16>() {
+                            Ok(port) if !view.network_host.trim().is_empty() => {
+                                *action = UiAction::JoinHost(format!(
+                                    "{}:{port}",
+                                    view.network_host.trim()
+                                ));
+                            }
+                            _ => println!("Enter a valid host address and port"),
+                        }
+                    }
+                });
+            }
+
+            if !view.network_status.is_empty() {
+                ui.label(RichText::new(view.network_status).small().color(theme.dim));
             }
         });
 }

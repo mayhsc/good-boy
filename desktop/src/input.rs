@@ -16,6 +16,7 @@ pub enum Action {
     OpenRom(PathBuf),
     Button(Button, bool),
     StartHost,
+    JoinHost(String),
 }
 
 pub fn translate(event: Event) -> Option<Action> {
