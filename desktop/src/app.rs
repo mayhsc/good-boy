@@ -64,11 +64,13 @@ impl App {
     pub fn run(&mut self) {
         loop {
             while let Some(event) = self.events.poll_event() {
-                self.screen.on_event(&event);
-                if let Some(action) = input::translate(event) {
-                    if !self.handle(action) {
-                        return;
-                    } // false = quit
+                let consumed = self.screen.on_event(&event);
+                if !consumed {
+                    if let Some(action) = input::translate(event) {
+                        if !self.handle(action) {
+                            return;
+                        } // false = quit
+                    }
                 }
             }
             self.frame();

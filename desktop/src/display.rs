@@ -144,8 +144,8 @@ impl Screen {
         }
     }
 
-    pub fn on_event(&mut self, event: &egui_sdl3::sdl3::event::Event) {
-        let scale = self.egui.painter.canvas.window().display_scale(); // read each time: it changes if the window moves to another monitor
+    pub fn on_event(&mut self, event: &egui_sdl3::sdl3::event::Event) -> bool {
+        let scale = self.egui.painter.canvas.window().display_scale(); 
         let mut e = event.clone();
         match &mut e {
             Event::MouseMotion { x, y, .. }
@@ -162,7 +162,7 @@ impl Screen {
             }
             _ => {}
         }
-        let _ = self.egui.on_event(event);
+        self.egui.on_event(&e).consumed
     }
 
     fn sync_theme(&mut self, view: &SettingsView) {
@@ -466,6 +466,7 @@ pub fn create_canvas(video_subsystem: &VideoSubsystem, name: &String) -> Canvas<
         .build()
         .unwrap();
 
+    video_subsystem.text_input().start(&window);
     window.into_canvas()
 }
 
