@@ -1,5 +1,11 @@
 use crate::{
-    IF_ADDR, apu::Apu, bank::Bank, joypad::{Button, Joypad}, ppu::Ppu, serial::{SerialPort, link::SerialLink}, timer::Timer,
+    IF_ADDR,
+    apu::Apu,
+    bank::Bank,
+    joypad::{Button, Joypad},
+    ppu::Ppu,
+    serial::{SerialPort, link::SerialLink},
+    timer::Timer,
 };
 
 pub trait Bus {
@@ -113,8 +119,14 @@ impl Bus for MemoryMap {
     fn tick_timers(&mut self, t_cycles: u32) {
         for _ in 0..t_cycles {
             let ev = self.timer.tick();
+
             self.apu.tick_frequency_timer();
-            self.serial_port.tick();
+
+            if self.serial_port.tick() {
+                let f = self.read(IF_ADDR) | 0x08;
+                self.write(IF_ADDR, f);
+            }
+
             if ev.interrupt {
                 let f = self.read(IF_ADDR) | (1 << 2);
                 self.write(IF_ADDR, f);

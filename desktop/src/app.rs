@@ -1,11 +1,12 @@
+use std::io;
+use std::sync::mpsc::{Receiver, TryRecvError};
 use std::{path::Path, time::Duration};
 
-use egui_sdl3::sdl3::keyboard::Scancode::P;
 use egui_sdl3::sdl3::{EventPump, Sdl};
 use gb_core::serial::link::TcpLink;
 
 use crate::display::{SettingsView, UiAction};
-use crate::network::{host, join};
+use crate::network::{start_host, start_join};
 use crate::palette::{ColorPalette, builtin_palettes};
 use crate::{
     audio::AudioOutput,
@@ -26,20 +27,17 @@ pub struct App {
     paused: bool,
     recent: Vec<std::path::PathBuf>,
     settings_open: bool,
-    network: Option<TcpLink>
+    pending: Option<Receiver<io::Result<TcpLink>>>,
+    network_status: String,
 }
 
 impl App {
     pub fn new(sdl: Sdl, port: Option<u16>) -> Self {
         let video = sdl.video().unwrap();
         let audio = sdl.audio().unwrap();
-        let network = match port {
-            Some(n) => {
-                // Add error handling
-                let link =  join(n);
-                Some(link.unwrap())
-            }
-            None => None
+        let pending = match port {
+            Some(p) => Some(start_join(format!("127.0.0.1:{p}").to_owned())),
+            None => None,
         };
 
         Self {
@@ -52,7 +50,8 @@ impl App {
             paused: false,
             recent: Vec::new(),
             settings_open: false,
-            network: network
+            pending: pending,
+            network_status: "".to_owned(),
         }
     }
 
@@ -88,14 +87,13 @@ impl App {
                 }
             }
             Action::StartHost => {
-                match &mut self.network {
+                match &mut self.pending {
                     Some(_) => {
                         println!("Host already active");
-                    },
+                    }
                     None => {
                         // Error handling
-                        let link = host().unwrap();
-                        self.network = Some(link)
+                        self.pending = Some(start_host(7777));
                     }
                 }
             }
@@ -104,6 +102,8 @@ impl App {
     }
 
     fn frame(&mut self) {
+        self.poll_connection();
+
         while self.audio.queued_bytes() > 2 * FRAME_BYTES {
             std::thread::sleep(Duration::from_millis(1));
         }
@@ -170,9 +170,35 @@ impl App {
         }
     }
 
+    fn poll_connection(&mut self) {
+        if let Some(rx) = &self.pending {
+            match rx.try_recv() {
+                Ok(Ok(link)) => {
+                    self.attach_link(link);
+                    self.pending = None;
+                }
+                Ok(Err(e)) => {
+                    self.network_status = format!("Link failed: {e}");
+                    self.pending = None;
+                }
+                Err(TryRecvError::Empty) => {}
+                Err(TryRecvError::Disconnected) => {
+                    self.pending = None;
+                    self.network_status = format!("Disconnected")
+                }
+            }
+        }
+    }
+
+    fn attach_link(&mut self, link: TcpLink) {
+        if let Some(s) = &mut self.session {
+            s.attach_link(link);
+        }
+    }
+
     pub fn open_rom(&mut self, path: &Path) {
         self.try_save();
-        if let Ok(s) = Session::load(path, &mut self.network) {
+        if let Ok(s) = Session::load(path) {
             self.screen.set_title(&s.title());
             self.recent.retain(|recent| recent != path);
             self.recent.insert(0, path.to_owned());
@@ -184,5 +210,4 @@ impl App {
     fn try_save(&self) -> bool {
         self.session.as_ref().is_none_or(Session::save)
     }
-
 }

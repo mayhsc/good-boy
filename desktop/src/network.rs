@@ -1,22 +1,24 @@
 use std::{
-    io,
-    net::{TcpListener, TcpStream},
+    io, net::{TcpListener, TcpStream}, sync::mpsc, thread,
 };
 
 use gb_core::serial::link::TcpLink;
 
-pub fn host() -> io::Result<TcpLink> {
-    let listener = TcpListener::bind("127.0.0.1:0")?;
-    println!("Listening on {}", listener.local_addr()?);
-    let (stream, addr) = listener.accept()?;
-    println!("Client connected: {}", addr);
-
-    Ok(TcpLink::new(stream))
+pub fn start_host(port: u16) -> mpsc::Receiver<io::Result<TcpLink>> {
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let result = TcpListener::bind(("0.0.0.0", 7777))
+            .and_then(|l| l.accept())
+            .map(|(stream, _)| TcpLink::new(stream));
+        let _ = tx.send(result);
+    });
+    rx
 }
 
-pub fn join(port: u16) -> io::Result<TcpLink> {
-    let stream = TcpStream::connect(format!("127.0.0.1:{port}"))?;
-    println!("Connected to host");
-
-    Ok(TcpLink::new(stream))
+pub fn start_join(addr: String) -> mpsc::Receiver<io::Result<TcpLink>> {
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let _ = tx.send(TcpStream::connect(addr).map(TcpLink::new));
+    });
+    rx
 }
