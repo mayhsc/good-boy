@@ -112,11 +112,17 @@ pub enum UiAction {
     _OpenSettings,
     ChoosePalette(usize),
     ChooseDefaultDirectory,
+    StartHost,
+    JoinHost(String),
 }
 
 pub struct SettingsView<'a> {
     pub palettes: &'a [ColorPalette],
     pub selected: usize,
+    pub network_host: &'a mut String,
+    pub network_port: &'a mut String,
+    pub network_status: &'a str,
+    pub host_port: Option<u16>,
 }
 
 pub struct Screen {
@@ -138,8 +144,8 @@ impl Screen {
         }
     }
 
-    pub fn on_event(&mut self, event: &egui_sdl3::sdl3::event::Event) {
-        let scale = self.egui.painter.canvas.window().display_scale(); // read each time: it changes if the window moves to another monitor
+    pub fn on_event(&mut self, event: &egui_sdl3::sdl3::event::Event) -> bool {
+        let scale = self.egui.painter.canvas.window().display_scale(); 
         let mut e = event.clone();
         match &mut e {
             Event::MouseMotion { x, y, .. }
@@ -156,7 +162,7 @@ impl Screen {
             }
             _ => {}
         }
-        let _ = self.egui.on_event(event);
+        self.egui.on_event(&e).consumed
     }
 
     fn sync_theme(&mut self, view: &SettingsView) {
@@ -172,7 +178,7 @@ impl Screen {
         session: &Session,
         palette: &ColorPalette,
         settings_open: &mut bool,
-        view: &SettingsView,
+        view: &mut SettingsView,
     ) -> UiAction {
         self.sync_theme(view);
 
@@ -190,17 +196,16 @@ impl Screen {
         draw_screen(&mut self.egui.painter.canvas, &mut texture, &self.rgba);
 
         let mut action = UiAction::None;
-
-        if *settings_open {
-            let theme = &self.theme;
-            let dirty = &mut self.theme_dirty;
-            self.egui.run(|ctx| {
-                if std::mem::replace(dirty, false) {
-                    theme.apply(ctx);
-                }
+        let theme = &self.theme;
+        let dirty = &mut self.theme_dirty;
+        self.egui.run(|ctx| {
+            if std::mem::replace(dirty, false) {
+                theme.apply(ctx);
+            }
+            if *settings_open {
                 settings_window(ctx, settings_open, view, theme, &mut action);
-            });
-        }
+            }
+        });
         self.egui.paint();
         self.egui.present();
         action
@@ -211,7 +216,7 @@ impl Screen {
         &mut self,
         recent: &[PathBuf],
         settings_open: &mut bool,
-        view: &SettingsView,
+        view: &mut SettingsView,
     ) -> UiAction {
         self.sync_theme(view);
 
@@ -347,7 +352,7 @@ fn swatches(ui: &mut egui::Ui, colors: &[[u8; 4]], size: f32) {
 fn settings_window(
     ctx: &egui::Context,
     open: &mut bool,
-    view: &SettingsView,
+    view: &mut SettingsView,
     theme: &Theme,
     action: &mut UiAction,
 ) {
@@ -404,6 +409,48 @@ fn settings_window(
             if ui.button("Choose folder…").clicked() {
                 *action = UiAction::ChooseDefaultDirectory;
             }
+
+            ui.add_space(8.0);
+            ui.separator();
+            ui.label(RichText::new("TCP LINK CABLE").small().color(theme.dim));
+
+            if let Some(port) = view.host_port {
+                ui.label(format!("Hosting on port {port}"));
+                ui.label(
+                    RichText::new("Share this port with the other player.")
+                        .small()
+                        .color(theme.dim),
+                );
+            } else {
+                ui.horizontal(|ui| {
+                    ui.label("Host");
+                    ui.add(egui::TextEdit::singleline(view.network_host).desired_width(185.0));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Port");
+                    ui.add(egui::TextEdit::singleline(view.network_port).desired_width(80.0));
+                });
+                ui.horizontal(|ui| {
+                    if ui.button("Host game").clicked() {
+                        *action = UiAction::StartHost;
+                    }
+                    if ui.button("Join game").clicked() {
+                        match view.network_port.trim().parse::<u16>() {
+                            Ok(port) if !view.network_host.trim().is_empty() => {
+                                *action = UiAction::JoinHost(format!(
+                                    "{}:{port}",
+                                    view.network_host.trim()
+                                ));
+                            }
+                            _ => println!("Enter a valid host address and port"),
+                        }
+                    }
+                });
+            }
+
+            if !view.network_status.is_empty() {
+                ui.label(RichText::new(view.network_status).small().color(theme.dim));
+            }
         });
 }
 
@@ -419,6 +466,7 @@ pub fn create_canvas(video_subsystem: &VideoSubsystem, name: &String) -> Canvas<
         .build()
         .unwrap();
 
+    video_subsystem.text_input().start(&window);
     window.into_canvas()
 }
 

@@ -10,6 +10,7 @@ use crate::{
         registers::{Operand8, Reg8, Reg16, Registers},
     },
     joypad::Button,
+    serial::link::SerialLink,
 };
 
 pub struct Cpu<B: Bus> {
@@ -658,5 +659,9 @@ impl Cpu<MemoryMap> {
 
     pub fn dump_ext_ram(&self) -> Option<&[u8]> {
         self.bus.dump_ext_ram()
+    }
+
+    pub fn attach_link(&mut self, link: Option<Box<dyn SerialLink>>) {
+        self.bus.attach_link(link);
     }
 }
