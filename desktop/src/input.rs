@@ -12,7 +12,8 @@ pub enum Action {
     TogglePause,
     NextPalette,
     DumpVram,
-    OpenSettings,
+    ToggleSettings,
+    CloseSettings,
     OpenRom(PathBuf),
     Button(Button, bool),
     StartHost,
@@ -30,14 +31,17 @@ pub fn translate(event: Event) -> Option<Action> {
             ..
         } => match k {
             Keycode::H => Some(Action::StartHost),
-            Keycode::Escape => Some(Action::Quit),
+            Keycode::Escape => Some(Action::CloseSettings),
             Keycode::P if !repeat => Some(Action::TogglePause),
             Keycode::C if !repeat => Some(Action::NextPalette),
             Keycode::K if keymod.intersects(Mod::LCTRLMOD | Mod::RCTRLMOD) => {
                 Some(Action::DumpVram)
             }
-            Keycode::Comma if keymod.intersects(Mod::LCTRLMOD | Mod::RCTRLMOD) => {
-                Some(Action::OpenSettings)
+            Keycode::Comma
+                if keymod
+                    .intersects(Mod::LCTRLMOD | Mod::RCTRLMOD | Mod::LGUIMOD | Mod::RGUIMOD) =>
+            {
+                Some(Action::ToggleSettings)
             }
             _ if repeat => None,
             _ => key_to_button(k).map(|b| Action::Button(b, true)),

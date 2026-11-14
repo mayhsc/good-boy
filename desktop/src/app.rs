@@ -5,6 +5,7 @@ use std::{path::Path, time::Duration};
 use egui_sdl3::sdl3::{EventPump, Sdl};
 use gb_core::serial::link::TcpLink;
 
+use crate::config::{Config, Recent, load_config, store_config};
 use crate::display::{SettingsView, UiAction};
 use crate::network::{start_host, start_join};
 use crate::palette::{ColorPalette, builtin_palettes};
@@ -25,7 +26,6 @@ pub struct App {
     palettes: Vec<ColorPalette>,
     palette: usize,
     paused: bool,
-    recent: Vec<std::path::PathBuf>,
     settings_open: bool,
     pending: Option<Receiver<io::Result<TcpLink>>>,
     network_status: String,
@@ -33,6 +33,7 @@ pub struct App {
     network_port: String,
     host_port: Option<u16>,
     link: Option<TcpLink>,
+    config: Config,
 }
 
 impl App {
@@ -43,6 +44,14 @@ impl App {
             Some(p) => Some(start_join(format!("127.0.0.1:{p}").to_owned())),
             None => None,
         };
+        let config = match load_config() {
+            Ok(c) => c,
+            Err(_) => {
+                let config = Config::default();
+                store_config(&config).unwrap();
+                config
+            }
+        };
 
         Self {
             events: sdl.event_pump().unwrap(),
@@ -50,16 +59,16 @@ impl App {
             audio: AudioOutput::new(&audio),
             session: None,
             palettes: builtin_palettes(),
-            palette: 0,
+            palette: config.palette,
             paused: false,
-            recent: Vec::new(),
             settings_open: false,
             pending: pending,
             network_status: "".to_owned(),
             network_host: "127.0.0.1".to_owned(),
             network_port: port.map_or_else(|| "".to_owned(), |port| port.to_string()),
             host_port: None,
-            link: None
+            link: None,
+            config: config,
         }
     }
 
@@ -79,17 +88,23 @@ impl App {
         }
     }
 
+    fn update_config(&mut self, new_config: Config) {
+        store_config(&new_config).unwrap();
+        self.config = new_config;
+    }
+
     fn handle(&mut self, action: Action) -> bool {
         match action {
             Action::Quit => return !(self.try_save() || self.screen.confirm_quit_without_saving()),
             Action::TogglePause => self.paused = !self.paused,
-            Action::NextPalette => self.palette = (self.palette + 1) % self.palettes.len(),
+            Action::NextPalette => self.select_palette(self.palette + 1),
             Action::DumpVram => {
                 if let Some(s) = &self.session {
                     s.dump_vram()
                 }
             }
-            Action::OpenSettings => self.settings_open = true,
+            Action::ToggleSettings => self.settings_open = !self.settings_open,
+            Action::CloseSettings => self.settings_open = false,
             Action::OpenRom(path) => self.open_rom(&path),
             Action::Button(b, down) => {
                 if let Some(s) = &mut self.session {
@@ -144,20 +159,15 @@ impl App {
                     host_port: self.host_port,
                 };
                 self.screen
-                    .home(&self.recent, &mut self.settings_open, &mut view)
+                    .home(&self.config.recents, &mut self.settings_open, &mut view)
             };
             self.handle_ui_action(action);
             return;
         }
 
-        if self.paused {
-            std::thread::sleep(Duration::from_millis(16));
-            return;
-        }
-
-        // Keep the game frozen while the settings window is open, but keep drawing.
+        // Keep the game frozen while paused or in settings, but keep drawing.
         let session = self.session.as_mut().unwrap();
-        if !self.settings_open {
+        if !self.settings_open && !self.paused {
             session.run_frame();
             self.audio.submit(session);
         } else {
@@ -176,6 +186,7 @@ impl App {
             self.screen.draw(
                 self.session.as_ref().unwrap(),
                 &self.palettes[self.palette],
+                self.paused,
                 &mut self.settings_open,
                 &mut view,
             )
@@ -194,7 +205,7 @@ impl App {
                     self.open_rom(&path);
                 }
             }
-            UiAction::ChoosePalette(index) => self.palette = index,
+            UiAction::ChoosePalette(index) => self.select_palette(index),
             UiAction::ChooseDefaultDirectory => {
                 println!("Choose default ROM directory requested")
             }
@@ -206,6 +217,15 @@ impl App {
             }
             UiAction::_OpenSettings | UiAction::None => {}
         }
+    }
+
+    fn select_palette(&mut self, palette: usize) {
+        let palette = (palette) % self.palettes.len();
+        self.palette = palette;
+        self.update_config(Config {
+            palette: palette,
+            ..self.config.clone()
+        })
     }
 
     fn poll_connection(&mut self) {
@@ -240,12 +260,25 @@ impl App {
     pub fn open_rom(&mut self, path: &Path) {
         self.try_save();
         if let Ok(s) = Session::load(path, self.link.take()) {
-            self.screen.set_title(&s.title());
-            self.recent.retain(|recent| recent != path);
-            self.recent.insert(0, path.to_owned());
-            self.recent.truncate(8);
+            let title = s.title();
+            self.screen.set_title(&title);
+
+            let recent = Recent {
+                name: title,
+                path: path.to_path_buf(),
+                thumbnail: "".to_owned(),
+            };
+            self.store_to_recents();
+
+            self.config.recents.retain(|recent| recent.path != path);
+            self.config.recents.insert(0, recent);
+            self.config.recents.truncate(8);
             self.session = Some(s);
         }
+    }
+
+    fn store_to_recents(&mut self) {
+        self.update_config(self.config.clone());
     }
 
     fn try_save(&self) -> bool {
