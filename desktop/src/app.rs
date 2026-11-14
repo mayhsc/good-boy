@@ -5,7 +5,7 @@ use std::{path::Path, time::Duration};
 use egui_sdl3::sdl3::{EventPump, Sdl};
 use gb_core::serial::link::TcpLink;
 
-use crate::config::load_config;
+use crate::config::{Config, load_config, store_config};
 use crate::display::{SettingsView, UiAction};
 use crate::network::{start_host, start_join};
 use crate::palette::{ColorPalette, builtin_palettes};
@@ -34,6 +34,7 @@ pub struct App {
     network_port: String,
     host_port: Option<u16>,
     link: Option<TcpLink>,
+    config: Config,
 }
 
 impl App {
@@ -44,8 +45,10 @@ impl App {
             Some(p) => Some(start_join(format!("127.0.0.1:{p}").to_owned())),
             None => None,
         };
-        let config = load_config();
-        println!("{:?}", config);
+        let config = match load_config() {
+            Ok(c) => c,
+            Err(_) => store_config(None),
+        };
 
         Self {
             events: sdl.event_pump().unwrap(),
@@ -53,7 +56,7 @@ impl App {
             audio: AudioOutput::new(&audio),
             session: None,
             palettes: builtin_palettes(),
-            palette: 0,
+            palette: config.palette,
             paused: false,
             recent: Vec::new(),
             settings_open: false,
@@ -63,6 +66,7 @@ impl App {
             network_port: port.map_or_else(|| "".to_owned(), |port| port.to_string()),
             host_port: None,
             link: None,
+            config: config,
         }
     }
 
@@ -82,11 +86,22 @@ impl App {
         }
     }
 
+    fn update_config(&mut self, new_config: Config) {
+        self.config = store_config(Some(new_config));
+    }
+
     fn handle(&mut self, action: Action) -> bool {
         match action {
             Action::Quit => return !(self.try_save() || self.screen.confirm_quit_without_saving()),
             Action::TogglePause => self.paused = !self.paused,
-            Action::NextPalette => self.palette = (self.palette + 1) % self.palettes.len(),
+            Action::NextPalette => {
+                let palette = (self.palette + 1) % self.palettes.len();
+                self.palette = palette;
+                self.update_config(Config {
+                    palette: palette,
+                    ..self.config
+                })
+            }
             Action::DumpVram => {
                 if let Some(s) = &self.session {
                     s.dump_vram()

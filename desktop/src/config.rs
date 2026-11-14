@@ -1,7 +1,7 @@
 use std::{
     fmt,
     fs::{self, File},
-    io::{self, BufReader},
+    io::{self, BufReader, BufWriter},
     path::{Path, PathBuf},
 };
 
@@ -15,7 +15,7 @@ use sdl3::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Config {
     pub palette: usize,
 }
@@ -29,7 +29,7 @@ pub enum ConfigError {
 
 fn base_path() -> PathBuf {
     let config_dir = dirs::config_dir().unwrap();
-    let app_dir = config_dir.join("Good Boy").join("Saves");
+    let app_dir = config_dir.join("Good Boy");
 
     fs::create_dir_all(&app_dir).unwrap();
 
@@ -37,7 +37,7 @@ fn base_path() -> PathBuf {
 }
 
 fn save_path(name: &Path) -> PathBuf {
-    let base_path = base_path();
+    let base_path = base_path().join("Saves");
     let filename = name.file_name().unwrap();
     let path = base_path.join(filename).with_extension("sav");
     path
@@ -69,6 +69,20 @@ pub fn load_config() -> Result<Config, ConfigError> {
     let reader = BufReader::new(file);
     serde_json::from_reader(reader).map_err(ConfigError::Parse)
 }
+
+pub fn store_config(c: Option<Config>) -> Config {
+    let config = match c {
+        Some(v) => v,
+        None => Config::default(),
+    };
+
+    let config_file = base_path().join("config").with_extension("json");
+    let file = File::create(config_file).unwrap();
+    let mut writer = BufWriter::new(file);
+    serde_json::to_writer_pretty(&mut writer, &config).unwrap();
+    config
+}
+
 pub fn load_save(name: &Path) -> Option<Vec<u8>> {
     let path = save_path(name);
     fs::read(path).ok()
