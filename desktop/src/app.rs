@@ -59,7 +59,7 @@ impl App {
             network_host: "127.0.0.1".to_owned(),
             network_port: port.map_or_else(|| "".to_owned(), |port| port.to_string()),
             host_port: None,
-            link: None
+            link: None,
         }
     }
 
@@ -89,7 +89,8 @@ impl App {
                     s.dump_vram()
                 }
             }
-            Action::OpenSettings => self.settings_open = true,
+            Action::ToggleSettings => self.settings_open = !self.settings_open,
+            Action::CloseSettings => self.settings_open = false,
             Action::OpenRom(path) => self.open_rom(&path),
             Action::Button(b, down) => {
                 if let Some(s) = &mut self.session {
