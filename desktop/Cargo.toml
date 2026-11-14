@@ -16,3 +16,7 @@ name = "Good Boy"
 identifier = "com.mayhs.good_boy"
 version = "0.1.0"
 icon = ["assets/GB.png"]
+
+[lints.clippy]
+redundant_clone = "warn"
+needless_pass_by_value = "warn"

@@ -26,7 +26,6 @@ pub struct App {
     palettes: Vec<ColorPalette>,
     palette: usize,
     paused: bool,
-    recent: Vec<Recent>,
     settings_open: bool,
     pending: Option<Receiver<io::Result<TcpLink>>>,
     network_status: String,
@@ -53,6 +52,7 @@ impl App {
                 config
             }
         };
+
         Self {
             events: sdl.event_pump().unwrap(),
             screen: Screen::new(&video, "Good Boy"),
@@ -61,7 +61,6 @@ impl App {
             palettes: builtin_palettes(),
             palette: config.palette,
             paused: false,
-            recent: Vec::new(),
             settings_open: false,
             pending: pending,
             network_status: "".to_owned(),
@@ -160,7 +159,7 @@ impl App {
                     host_port: self.host_port,
                 };
                 self.screen
-                    .home(&self.recent, &mut self.settings_open, &mut view)
+                    .home(&self.config.recents, &mut self.settings_open, &mut view)
             };
             self.handle_ui_action(action);
             return;
@@ -273,20 +272,17 @@ impl App {
                 path: path.to_path_buf(),
                 thumbnail: "".to_owned(),
             };
-            self.store_to_recents(recent.clone());
+            self.store_to_recents();
 
-            self.recent.retain(|recent| recent.path != path);
-            self.recent.insert(0, recent);
-            self.recent.truncate(8);
+            self.config.recents.retain(|recent| recent.path != path);
+            self.config.recents.insert(0, recent);
+            self.config.recents.truncate(8);
             self.session = Some(s);
         }
     }
 
-    fn store_to_recents(&mut self, rom: Recent) {
-        self.update_config(Config {
-            recents: rom,
-            ..self.config.clone()
-        });
+    fn store_to_recents(&mut self) {
+        self.update_config(self.config.clone());
     }
 
     fn try_save(&self) -> bool {

@@ -26,7 +26,7 @@ pub struct Recent {
 pub struct Config {
     pub palette: usize,
     pub rom_dir: String,
-    pub recents: Recent,
+    pub recents: Vec<Recent>,
 }
 
 #[derive(Debug)]
