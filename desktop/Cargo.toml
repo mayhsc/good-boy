@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+dirs = "7.0.0"
 egui-sdl3 = "0.4.0"
 gb-core = {path = "../gb-core"}
 rfd = "0.17.2"

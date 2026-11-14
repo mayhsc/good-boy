@@ -12,8 +12,20 @@ use sdl3::{
     video::Window,
 };
 
+fn base_path() -> PathBuf {
+    let config_dir = dirs::config_dir().unwrap();
+    let app_dir = config_dir.join("Good Boy").join("Saves");
+
+    fs::create_dir_all(&app_dir).unwrap();
+
+    app_dir
+}
+
 fn save_path(name: &Path) -> PathBuf {
-    name.with_extension("sav")
+    let base_path = base_path();
+    let filename = name.file_name().unwrap();
+    let path = base_path.join(filename).with_extension("sav");
+    path
 }
 
 pub fn load_save(name: &Path) -> Option<Vec<u8>> {
@@ -23,7 +35,14 @@ pub fn load_save(name: &Path) -> Option<Vec<u8>> {
 
 pub fn create_save(data: &[u8], name: &Path) -> bool {
     let path = save_path(name);
-    fs::write(path, data).is_ok()
+
+    match fs::write(path, data) {
+        Ok(_) => true,
+        Err(e) => {
+            println!("Error: {:?}", e);
+            false
+        }
+    }
 }
 
 pub fn show_save_error_dialog(canvas: &Canvas<Window>) -> bool {
