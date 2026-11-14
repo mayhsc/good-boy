@@ -662,6 +662,6 @@ impl Cpu<MemoryMap> {
     }
 
     pub fn attach_link(&mut self, link: Option<Box<dyn SerialLink>>) {
-        self.bus.set_link(link);
+        self.bus.attach_link(link);
     }
 }

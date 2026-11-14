@@ -32,6 +32,7 @@ pub struct App {
     network_host: String,
     network_port: String,
     host_port: Option<u16>,
+    link: Option<TcpLink>,
 }
 
 impl App {
@@ -58,6 +59,7 @@ impl App {
             network_host: "127.0.0.1".to_owned(),
             network_port: port.map_or_else(|| "".to_owned(), |port| port.to_string()),
             host_port: None,
+            link: None
         }
     }
 
@@ -123,8 +125,9 @@ impl App {
     }
 
     fn frame(&mut self) {
-        self.poll_connection();
-
+        if self.pending.is_some() {
+            self.poll_connection();
+        }
         while self.audio.queued_bytes() > 2 * FRAME_BYTES {
             std::thread::sleep(Duration::from_millis(1));
         }
@@ -229,12 +232,14 @@ impl App {
     fn attach_link(&mut self, link: TcpLink) {
         if let Some(s) = &mut self.session {
             s.attach_link(link);
+        } else {
+            self.link = Some(link);
         }
     }
 
     pub fn open_rom(&mut self, path: &Path) {
         self.try_save();
-        if let Ok(s) = Session::load(path) {
+        if let Ok(s) = Session::load(path, self.link.take()) {
             self.screen.set_title(&s.title());
             self.recent.retain(|recent| recent != path);
             self.recent.insert(0, path.to_owned());

@@ -194,7 +194,7 @@ impl MemoryMap {
         }
     }
 
-    pub fn set_link(&mut self, link: Option<Box<dyn SerialLink>>) {
+    pub fn attach_link(&mut self, link: Option<Box<dyn SerialLink>>) {
         self.serial_port.set_link(link);
     }
 }

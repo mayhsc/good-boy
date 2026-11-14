@@ -21,11 +21,15 @@ pub struct Session {
 }
 
 impl Session {
-    pub fn load(path: &Path) -> io::Result<Self> {
+    pub fn load(path: &Path, tcp_link: Option<TcpLink>) -> io::Result<Self> {
         let rom = std::fs::read(path)?;
         let mut bus = MemoryMap::new();
 
         bus.load(&rom, load_save(path));
+        if let Some(l) = tcp_link {
+            let link: Option<Box<dyn SerialLink>> = Some(Box::new(l));
+            bus.attach_link(link);
+        }
 
         Ok(Self {
             cpu: Cpu::new(bus),

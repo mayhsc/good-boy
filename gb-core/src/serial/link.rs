@@ -19,6 +19,7 @@ pub struct TcpLink {
 
 impl TcpLink {
     pub fn new(stream: TcpStream) -> Self {
+        stream.set_nodelay(true).unwrap();
         Self { stream, connected: true }
     }
 }

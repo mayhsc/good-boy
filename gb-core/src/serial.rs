@@ -1,11 +1,10 @@
 use std::time::Duration;
 
-use crate::serial::link::{SerialLink};
+use crate::serial::link::SerialLink;
 
 pub mod link;
 
 const BYTE_CYCLES: u32 = 4096;
-
 
 #[derive(Debug, Default)]
 pub struct SerialPort {
@@ -52,6 +51,7 @@ impl SerialPort {
         if self.sc & 0x80 == 0 && !link.is_connected() {
             return false;
         }
+
 
         if self.sc & 0x81 == 0x81 {
             self.cycles += 1;
