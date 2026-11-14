@@ -47,9 +47,12 @@ impl App {
         };
         let config = match load_config() {
             Ok(c) => c,
-            Err(_) => store_config(None),
+            Err(_) => {
+                let config = Config::default();
+                store_config(&config).unwrap();
+                config
+            }
         };
-
         Self {
             events: sdl.event_pump().unwrap(),
             screen: Screen::new(&video, "Good Boy"),
@@ -87,21 +90,15 @@ impl App {
     }
 
     fn update_config(&mut self, new_config: Config) {
-        self.config = store_config(Some(new_config));
+        store_config(&new_config).unwrap();
+        self.config = new_config;
     }
 
     fn handle(&mut self, action: Action) -> bool {
         match action {
             Action::Quit => return !(self.try_save() || self.screen.confirm_quit_without_saving()),
             Action::TogglePause => self.paused = !self.paused,
-            Action::NextPalette => {
-                let palette = (self.palette + 1) % self.palettes.len();
-                self.palette = palette;
-                self.update_config(Config {
-                    palette: palette,
-                    ..self.config
-                })
-            }
+            Action::NextPalette => self.select_palette(self.palette + 1),
             Action::DumpVram => {
                 if let Some(s) = &self.session {
                     s.dump_vram()
@@ -213,7 +210,7 @@ impl App {
                     self.open_rom(&path);
                 }
             }
-            UiAction::ChoosePalette(index) => self.palette = index,
+            UiAction::ChoosePalette(index) => self.select_palette(index),
             UiAction::ChooseDefaultDirectory => {
                 println!("Choose default ROM directory requested")
             }
@@ -225,6 +222,15 @@ impl App {
             }
             UiAction::_OpenSettings | UiAction::None => {}
         }
+    }
+
+    fn select_palette(&mut self, palette: usize) {
+        let palette = (palette) % self.palettes.len();
+        self.palette = palette;
+        self.update_config(Config {
+            palette: palette,
+            ..self.config
+        })
     }
 
     fn poll_connection(&mut self) {

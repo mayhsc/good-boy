@@ -70,17 +70,14 @@ pub fn load_config() -> Result<Config, ConfigError> {
     serde_json::from_reader(reader).map_err(ConfigError::Parse)
 }
 
-pub fn store_config(c: Option<Config>) -> Config {
-    let config = match c {
-        Some(v) => v,
-        None => Config::default(),
-    };
-
+pub fn store_config(config: &Config) -> Result<(), std::io::Error> {
     let config_file = base_path().join("config").with_extension("json");
-    let file = File::create(config_file).unwrap();
-    let mut writer = BufWriter::new(file);
-    serde_json::to_writer_pretty(&mut writer, &config).unwrap();
-    config
+    let file = File::create(config_file)?;
+    let writer = BufWriter::new(file);
+
+    serde_json::to_writer_pretty(writer, config).map_err(std::io::Error::other)?;
+
+    Ok(())
 }
 
 pub fn load_save(name: &Path) -> Option<Vec<u8>> {
