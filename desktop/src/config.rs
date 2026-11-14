@@ -1,5 +1,7 @@
 use std::{
-    fs,
+    fmt,
+    fs::{self, File},
+    io::{self, BufReader},
     path::{Path, PathBuf},
 };
 
@@ -11,6 +13,19 @@ use sdl3::{
     render::Canvas,
     video::Window,
 };
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Config {
+    pub palette: usize,
+}
+
+#[derive(Debug)]
+pub enum ConfigError {
+    NotFound,
+    Io(io::Error),
+    Parse(serde_json::Error),
+}
 
 fn base_path() -> PathBuf {
     let config_dir = dirs::config_dir().unwrap();
@@ -28,6 +43,32 @@ fn save_path(name: &Path) -> PathBuf {
     path
 }
 
+impl fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ConfigError::NotFound => write!(f, "Config file does not exist"),
+            ConfigError::Io(err) => write!(f, "Failed to open config file: {}", err),
+            ConfigError::Parse(err) => write!(f, "Failed to parse config JSON: {}", err),
+        }
+    }
+}
+
+impl std::error::Error for ConfigError {}
+
+pub fn load_config() -> Result<Config, ConfigError> {
+    let config_file = base_path().join("config").with_extension("json");
+
+    let file = File::open(&config_file).map_err(|err| {
+        if err.kind() == io::ErrorKind::NotFound {
+            ConfigError::NotFound
+        } else {
+            ConfigError::Io(err)
+        }
+    })?;
+
+    let reader = BufReader::new(file);
+    serde_json::from_reader(reader).map_err(ConfigError::Parse)
+}
 pub fn load_save(name: &Path) -> Option<Vec<u8>> {
     let path = save_path(name);
     fs::read(path).ok()

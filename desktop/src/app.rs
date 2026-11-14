@@ -5,6 +5,7 @@ use std::{path::Path, time::Duration};
 use egui_sdl3::sdl3::{EventPump, Sdl};
 use gb_core::serial::link::TcpLink;
 
+use crate::config::load_config;
 use crate::display::{SettingsView, UiAction};
 use crate::network::{start_host, start_join};
 use crate::palette::{ColorPalette, builtin_palettes};
@@ -43,6 +44,8 @@ impl App {
             Some(p) => Some(start_join(format!("127.0.0.1:{p}").to_owned())),
             None => None,
         };
+        let config = load_config();
+        println!("{:?}", config);
 
         Self {
             events: sdl.event_pump().unwrap(),

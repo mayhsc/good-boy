@@ -333,7 +333,7 @@ impl Screen {
     }
 
     pub fn confirm_quit_without_saving(&self) -> bool {
-        crate::save::show_save_error_dialog(&self.egui.painter.canvas)
+        crate::config::show_save_error_dialog(&self.egui.painter.canvas)
     }
 }
 

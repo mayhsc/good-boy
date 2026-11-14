@@ -12,7 +12,7 @@ use gb_core::{
 
 use crate::{
     FRAME_M_CYCLES,
-    save::{create_save, load_save},
+    config::{create_save, load_save},
 };
 
 pub struct Session {

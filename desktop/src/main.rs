@@ -4,7 +4,7 @@ mod display;
 mod input;
 mod network;
 mod palette;
-mod save;
+mod config;
 mod session;
 
 use std::env;
@@ -33,6 +33,7 @@ fn main() {
         .nth(1)
         .and_then(|val| Some(val.parse().ok()))
         .unwrap_or(None);
+
 
     let mut app = App::new(sdl, port);
 
