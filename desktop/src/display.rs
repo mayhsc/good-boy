@@ -12,7 +12,7 @@ use egui_sdl3::{EguiCanvas, egui};
 
 use egui::{Color32, CornerRadius, FontId, RichText, Stroke, Vec2};
 
-use crate::{RESOLUTION_X, RESOLUTION_Y, SCALE, palette::ColorPalette, session::Session};
+use crate::{RESOLUTION_X, RESOLUTION_Y, SCALE, config::Recent, palette::ColorPalette, session::Session};
 
 #[derive(Clone, Copy)]
 pub struct Theme {
@@ -214,7 +214,7 @@ impl Screen {
     #[allow(deprecated)]
     pub fn home(
         &mut self,
-        recent: &[PathBuf],
+        recent: &[Recent],
         settings_open: &mut bool,
         view: &mut SettingsView,
     ) -> UiAction {
@@ -282,12 +282,13 @@ impl Screen {
                             });
                     } else {
                         egui::ScrollArea::vertical().show(ui, |ui| {
-                            for path in recent {
-                                let name = path
-                                    .file_stem()
-                                    .and_then(|n| n.to_str())
-                                    .unwrap_or("Untitled");
-                                let dir = path
+                            for r in recent {
+                                // let name = path
+                                //     .file_stem()
+                                //     .and_then(|n| n.to_str())
+                                //     .unwrap_or("Untitled");
+                                let name = r.name.clone();
+                                let dir = r.path
                                     .parent()
                                     .map(|p| p.display().to_string())
                                     .unwrap_or_default();
@@ -308,7 +309,7 @@ impl Screen {
                                     .on_hover_cursor(egui::CursorIcon::PointingHand)
                                     .clicked()
                                 {
-                                    action = UiAction::OpenRom(path.clone());
+                                    action = UiAction::OpenRom(r.path.clone());
                                 }
                             }
                         });

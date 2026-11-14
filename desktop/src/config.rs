@@ -15,9 +15,18 @@ use sdl3::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+pub struct Recent {
+    pub name: String,
+    pub path: PathBuf,
+    pub thumbnail: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Config {
     pub palette: usize,
+    pub rom_dir: String,
+    pub recents: Recent,
 }
 
 #[derive(Debug)]

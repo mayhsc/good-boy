@@ -5,7 +5,7 @@ use std::{path::Path, time::Duration};
 use egui_sdl3::sdl3::{EventPump, Sdl};
 use gb_core::serial::link::TcpLink;
 
-use crate::config::{Config, load_config, store_config};
+use crate::config::{Config, Recent, load_config, store_config};
 use crate::display::{SettingsView, UiAction};
 use crate::network::{start_host, start_join};
 use crate::palette::{ColorPalette, builtin_palettes};
@@ -26,7 +26,7 @@ pub struct App {
     palettes: Vec<ColorPalette>,
     palette: usize,
     paused: bool,
-    recent: Vec<std::path::PathBuf>,
+    recent: Vec<Recent>,
     settings_open: bool,
     pending: Option<Receiver<io::Result<TcpLink>>>,
     network_status: String,
@@ -229,7 +229,7 @@ impl App {
         self.palette = palette;
         self.update_config(Config {
             palette: palette,
-            ..self.config
+            ..self.config.clone()
         })
     }
 
@@ -265,12 +265,28 @@ impl App {
     pub fn open_rom(&mut self, path: &Path) {
         self.try_save();
         if let Ok(s) = Session::load(path, self.link.take()) {
-            self.screen.set_title(&s.title());
-            self.recent.retain(|recent| recent != path);
-            self.recent.insert(0, path.to_owned());
+            let title = s.title();
+            self.screen.set_title(&title);
+
+            let recent = Recent {
+                name: title,
+                path: path.to_path_buf(),
+                thumbnail: "".to_owned(),
+            };
+            self.store_to_recents(recent.clone());
+
+            self.recent.retain(|recent| recent.path != path);
+            self.recent.insert(0, recent);
             self.recent.truncate(8);
             self.session = Some(s);
         }
+    }
+
+    fn store_to_recents(&mut self, rom: Recent) {
+        self.update_config(Config {
+            recents: rom,
+            ..self.config.clone()
+        });
     }
 
     fn try_save(&self) -> bool {
