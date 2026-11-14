@@ -165,14 +165,9 @@ impl App {
             return;
         }
 
-        if self.paused {
-            std::thread::sleep(Duration::from_millis(16));
-            return;
-        }
-
-        // Keep the game frozen while the settings window is open, but keep drawing.
+        // Keep the game frozen while paused or in settings, but keep drawing.
         let session = self.session.as_mut().unwrap();
-        if !self.settings_open {
+        if !self.settings_open && !self.paused {
             session.run_frame();
             self.audio.submit(session);
         } else {
@@ -191,6 +186,7 @@ impl App {
             self.screen.draw(
                 self.session.as_ref().unwrap(),
                 &self.palettes[self.palette],
+                self.paused,
                 &mut self.settings_open,
                 &mut view,
             )
