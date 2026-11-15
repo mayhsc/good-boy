@@ -20,7 +20,7 @@ A Game Boy (DMG) emulator written in Rust. The emulation core (`gb-core`) is a s
 
 ## Building and running
 
-Requires a recent stable Rust toolchain and the SDL3 C library to be installed. No ROMs are included. 
+Requires a recent stable Rust toolchain and the SDL3 C library to be installed. No ROMs are included.
 
 ```sh
 cd desktop
@@ -29,11 +29,11 @@ cargo run --release -- path/to/game.gb
 
 Command-line options:
 
-| Option | Description |
-| --- | --- |
-| `<rom>` | Open this ROM on launch |
+| Option          | Description                                             |
+| --------------- | ------------------------------------------------------- |
+| `<rom>`         | Open this ROM on launch                                 |
 | `--port <port>` | Join a link-cable host on `127.0.0.1:<port>` at startup |
-| `--mute` | Disable audio output |
+| `--mute`        | Disable audio output                                    |
 
 Run the core's tests with:
 
@@ -44,13 +44,21 @@ cargo test
 
 ## Controls
 
-| Key | Action |
-| --- | --- |
-| Arrow keys | D-pad |
-| `Z` / `X` | A / B |
+| Key                   | Action         |
+| --------------------- | -------------- |
+| Arrow keys            | D-pad          |
+| `Z` / `X`             | A / B          |
 | `Enter` / `Backspace` | Start / Select |
-| `P` | Pause |
-| `C` | Next palette |
+| `P`                   | Pause          |
+| `C`                   | Next palette   |
+
+## Web version
+
+Play Good Boy in your browser: [Open the web version](https://example.com) <!-- Replace with the deployed website URL. -->
+
+![Web version](desktop/assets/screenshots/web.png)
+
+The web version uses the same emulator core as the desktop version, but audio does not currently work on the web.
 
 ## Link cable
 
@@ -79,19 +87,18 @@ Use `127.0.0.1` to connect two instances on the same computer. Hosting on a LAN 
 
 Results from [Blargg's Game Boy test ROMs](https://github.com/retrio/gb-test-roms).
 
-| Test suite | Passed | Status |
-| --- | :---: | --- |
-| `cpu_instrs` | 11/11 | Pass |
-| `mem_timing` | 3/3 | Pass |
-| `mem_timing-2` | 3/3 | Pass |
-| `dmg_sound` | 8/12 | Partial |
-| `oam_bug` | 2/8 | Partial |
-| `instr_timing` | 0/1 | Fail |
-| `interrupt_time` | 0/1 | Fail |
-| `halt_bug` | 0/1 | Fail |
+| Test suite       | Passed | Status  |
+| ---------------- | :----: | ------- |
+| `cpu_instrs`     | 11/11  | Pass    |
+| `mem_timing`     |  3/3   | Pass    |
+| `mem_timing-2`   |  3/3   | Pass    |
+| `dmg_sound`      |  8/12  | Partial |
+| `oam_bug`        |  2/8   | Partial |
+| `instr_timing`   |  0/1   | Fail    |
+| `interrupt_time` |  0/1   | Fail    |
+| `halt_bug`       |  0/1   | Fail    |
 
 **Summary:** 27 of 40 tests pass.
-
 
 ## Credits & Attributions
 
@@ -118,7 +125,6 @@ Color palettes sourced from [Lospec](https://lospec.com/):
 [Tobu Tobu Girl](https://tangramgames.dk/tobutobugirl/) by [Tangram Games](https://tangramgames.itch.io/).
 
 Licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
-
 
 ## Contributing
 

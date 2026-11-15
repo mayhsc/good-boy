@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <title>Good Boy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="stage">
+      <div class="console" id="console">
+        <header class="brand">
+          <span class="brand-name">GOOD&nbsp;BOY</span>
+        </header>
+
+        <section class="bezel">
+          <div class="bezel-top">
+            <span class="led" id="led" title="Power"></span>
+          </div>
+          <div class="screen" id="screen-wrap">
+            <canvas
+              id="screen"
+              width="160"
+              height="144"
+              aria-label="Emulator screen"
+            ></canvas>
+            <div class="screen-msg" id="screen-msg">
+              <p class="blink">NO CARTRIDGE</p>
+              <p class="small">DROP A .GB FILE<br />OR CLICK INSERT</p>
+            </div>
+            <div class="paused-badge" id="paused-badge" hidden>PAUSED</div>
+          </div>
+          <p class="cart-title" id="cart-title">— EMPTY SLOT —</p>
+        </section>
+
+        <section class="controls">
+          <div class="dpad" aria-label="Directional pad">
+            <button class="dpad-btn up" data-btn="Up" aria-label="Up"></button>
+            <button
+              class="dpad-btn left"
+              data-btn="Left"
+              aria-label="Left"
+            ></button>
+            <span class="dpad-center"></span>
+            <button
+              class="dpad-btn right"
+              data-btn="Right"
+              aria-label="Right"
+            ></button>
+            <button
+              class="dpad-btn down"
+              data-btn="Down"
+              aria-label="Down"
+            ></button>
+          </div>
+
+          <div class="ab">
+            <div class="ab-btn-wrap b">
+              <button class="ab-btn" data-btn="B" aria-label="B"></button>
+              <span>B</span>
+            </div>
+            <div class="ab-btn-wrap a">
+              <button class="ab-btn" data-btn="A" aria-label="A"></button>
+              <span>A</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="menu-row">
+          <div class="pill-wrap">
+            <button class="pill" data-btn="Select" aria-label="Select"></button>
+            <span>SELECT</span>
+          </div>
+          <div class="pill-wrap">
+            <button class="pill" data-btn="Start" aria-label="Start"></button>
+            <span>START</span>
+          </div>
+        </section>
+      </div>
+
+      <aside class="deck">
+        <label class="cart-slot" id="cart-slot">
+          <input type="file" id="rom-input" accept=".gb,.gbc" hidden />
+          <span class="cart-icon" aria-hidden="true"></span>
+          <span class="cart-text">
+            <strong>INSERT CARTRIDGE</strong>
+            <small>click or drop a .gb / .gbc file anywhere</small>
+          </span>
+        </label>
+
+        <div class="panel">
+          <h2>SYSTEM</h2>
+          <div class="sys-buttons">
+            <button class="key" id="btn-pause" disabled>PAUSE</button>
+            <button class="key" id="btn-reset" disabled>RESET</button>
+            <button class="key" id="btn-sound" aria-pressed="true">
+              SOUND ON
+            </button>
+            <button class="key" id="btn-full">FULL</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>PALETTE</h2>
+          <div
+            class="palettes"
+            id="palettes"
+            role="radiogroup"
+            aria-label="Screen palette"
+          ></div>
+        </div>
+
+        <div class="panel">
+          <h2>KEYS</h2>
+          <dl class="keymap">
+            <dt>↑ ↓ ← →</dt>
+            <dd>D-PAD</dd>
+            <dt>Z</dt>
+            <dd>A</dd>
+            <dt>X</dt>
+            <dd>B</dd>
+            <dt>ENTER</dt>
+            <dd>START</dd>
+            <dt>BKSP</dt>
+            <dd>SELECT</dd>
+            <dt>P</dt>
+            <dd>PAUSE</dd>
+            <dt>C</dt>
+            <dd>PALETTE</dd>
+          </dl>
+        </div>
+      </aside>
+    </main>
+
+    <div class="drop-overlay" id="drop-overlay" hidden>
+      <p>RELEASE TO INSERT</p>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+    <script type="module" src="./index.ts"></script>
+  </body>
+</html>

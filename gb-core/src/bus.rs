@@ -37,6 +37,7 @@ pub struct MemoryMap {
     serial_port: SerialPort,
 
     enable_saves: bool,
+    pub name: String
 }
 
 impl Default for MemoryMap {
@@ -58,6 +59,7 @@ impl Default for MemoryMap {
             serial_port: SerialPort::new(),
 
             enable_saves: false,
+            name: "".to_owned()
         }
     }
 }
@@ -150,6 +152,7 @@ impl MemoryMap {
 
     pub fn load(&mut self, data: &[u8], save: Option<Vec<u8>>) {
         self.bank.load(data);
+        self.name(&data[0x134..=0x144]);
         self.enable_saves = matches!(
             data.get(0x147).copied().unwrap_or(0),
             0x03 | 0x06 | 0x09 | 0x0D | 0x0F | 0x10 | 0x13 | 0x1B | 0x1E
@@ -158,6 +161,15 @@ impl MemoryMap {
             self.bank.load_save(&save_data);
         }
     }
+
+    pub fn name(&mut self, data: &[u8]) {
+        let mut name: String = "".to_owned();
+        for &i in data {
+            name.push(char::from(i).to_ascii_uppercase());
+        }
+        self.name = name
+    }
+
     pub fn framebuffer(&self) -> &[u8] {
         &self.ppu.framebuffer()
     }

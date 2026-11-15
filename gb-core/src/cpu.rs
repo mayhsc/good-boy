@@ -664,4 +664,8 @@ impl Cpu<MemoryMap> {
     pub fn attach_link(&mut self, link: Option<Box<dyn SerialLink>>) {
         self.bus.attach_link(link);
     }
+
+    pub fn name(&self) -> String {
+        self.bus.name.clone()
+    }
 }

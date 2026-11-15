@@ -30,16 +30,20 @@ pub fn builtin_palettes() -> Vec<ColorPalette> {
             vec![hex(0xFFFFFF), hex(0xA0A4A0), hex(0x686C68), hex(0x000000)],
         ),
         ColorPalette::new(
-            "ICE CREAM GB",
+            "Classic Green",
+            vec![hex(0xe0f8d0), hex(0x88c070), hex(0x346856), hex(0x081820)],
+        ),
+        ColorPalette::new(
+            "ICE CREAM",
             vec![hex(0xFFF6D3), hex(0xF9A875), hex(0xEBCB6F), hex(0x7C3F58)],
         ),
         ColorPalette::new(
-            "VELVET CHERRY GB PALETTE",
-            vec![hex(0x2d162c), hex(0x412752), hex(0x683a68), hex(0x9775a6)],
+            "VELVET CHERRY",
+            vec![hex(0x9775a6), hex(0x683a68), hex(0x412752), hex(0x2d162c)],
         ),
         ColorPalette::new(
-            "NYMPH GB PALETTE",
-            vec![hex(0x2c2137), hex(0x446176), hex(0x3fac95), hex(0xa1ef8c)],
+            "NYMPH GB",
+            vec![hex(0xa1ef8c), hex(0x3fac95), hex(0x446176), hex(0x2c2137)],
         ),
     ]
 }
