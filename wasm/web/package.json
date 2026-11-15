@@ -5,7 +5,7 @@
   "scripts": {
     "wasm": "wasm-pack build .. --target web --release",
     "dev": "npm run wasm && vite",
-    "build": "npm run wasm && tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build",
     "preview": "vite preview"
   },
   "devDependencies": {
